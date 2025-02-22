@@ -7,5 +7,5 @@
 # Running tests
 `cd build && ./run_tests`
 
-# Running bench marking
+# Running benchmark
 `cd build && ./benchmark_me`
