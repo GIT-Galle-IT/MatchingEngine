@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(MatchingEngine)
+project(mini-ats)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -16,7 +16,11 @@ set(SOURCES
     test/OrderBookTest.cpp)
 
 add_executable(
-        me
+        ats
+        src/matching/MatchingEngine.hpp
+        src/matching/MatchingEngine.cpp
+        src/orderbook/OrderBook.cpp
+        src/orderbook/OrderBook.hpp
         src/cli_demo.cpp
     )
 
@@ -26,6 +30,8 @@ add_executable(
     run_tests
     src/matching/MatchingEngine.hpp
     src/matching/MatchingEngine.cpp
+    src/orderbook/OrderBook.cpp
+    src/orderbook/OrderBook.hpp
     tests/OrderBookTest.cpp
     tests/MatchingEngineTest.cpp
     tests/Setup.hpp
@@ -50,11 +56,13 @@ FetchContent_MakeAvailable(benchmark)
 find_package(benchmark REQUIRED)
 
 add_executable(
-    benchmark_me
-    src/matching/MatchingEngine.hpp
-    src/matching/MatchingEngine.cpp
+    benchmark_ats
     src/benchmark/benchmark.cpp
+    src/matching/MatchingEngine.cpp
+    src/matching/MatchingEngine.hpp
+    src/orderbook/OrderBook.cpp
+    src/orderbook/OrderBook.hpp
     tests/Setup.hpp
 )
 
-target_link_libraries(benchmark_me benchmark::benchmark)
+target_link_libraries(benchmark_ats benchmark::benchmark)
