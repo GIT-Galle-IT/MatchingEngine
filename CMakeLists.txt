@@ -14,7 +14,12 @@ FetchContent_MakeAvailable(googletest)
 
 set(SOURCES
     test/OrderBookTest.cpp)
+    
+find_package(Threads REQUIRED)
 
+include_directories(${CMAKE_SOURCE_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/src)
+  
 add_executable(
         me
         src/cli_demo.cpp
@@ -55,6 +60,33 @@ add_executable(
     src/matching/MatchingEngine.cpp
     src/benchmark/benchmark.cpp
     tests/Setup.hpp
+    ${SOURCES_FILES}
+    ${HEADERS_FILES}
 )
 
 target_link_libraries(benchmark_me benchmark::benchmark)
+
+file(GLOB_RECURSE SOURCES_FILES
+    ${CMAKE_SOURCE_DIR}/src/matching/exchange/data/*.cpp
+    ${CMAKE_SOURCE_DIR}/src/matching/exchange/impl/*.cpp
+    ${CMAKE_SOURCE_DIR}/src/matching/exchang/*.cpp
+    ${CMAKE_SOURCE_DIR}/src/matching/gbase/*.cpp
+    ${CMAKE_SOURCE_DIR}/src/matching/utils/*.cpp
+)
+
+file(GLOB_RECURSE HEADERS_FILES 
+    ${CMAKE_SOURCE_DIR}/src/matching/exchange/data/*.h
+    ${CMAKE_SOURCE_DIR}/src/matching/exchange/impl/*.h
+    ${CMAKE_SOURCE_DIR}/src/matching/exchang/*.h
+    ${CMAKE_SOURCE_DIR}/src/matching/gbase/*.h
+    ${CMAKE_SOURCE_DIR}/src/matching/utils/*.h
+)
+
+add_executable(
+    matching_engine
+    src/matching/MEServer.cpp
+    ${SOURCES_FILES}
+    ${HEADERS_FILES}
+)
+
+target_link_libraries(matching_engine PRIVATE Threads::Threads)

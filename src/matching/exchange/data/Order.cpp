@@ -1,29 +1,29 @@
 #include "Order.h"
 #include <sstream>
 
-using namespace matching::exchange;
+using namespace matching::exchange::data;
 
-void order::setOrderId(const int& orderId)
+void Order::setOrderId(const int& orderId)
 {
     gOrderId = orderId;
 }
 
-void order::setOrderSide(const std::string& side)
+void Order::setOrderSide(const std::string& side)
 {
     if (side == "BUY")
-        gSide = OrderBookSide::Buy;
+        gOrderSide = OrderBookSide::Buy;
     else if (side == "SELL")
-        gSide = OrderBookSide::Sell;
+        gOrderSide = OrderBookSide::Sell;
     else
-        gSide = OrderBookSide::Invalid;
+        gOrderSide = OrderBookSide::Invalid;
 }
 
-void order::setOrderQuantity(const int& orderQuantity)
+void Order::setOrderQuantity(const int& orderQuantity)
 {
     gOrderQuantity = orderQuantity;
 }
 
-void order::setOrderPrice(const double& orderPrice)
+void Order::setOrderPrice(const double& orderPrice)
 {
     gOrderPrice = orderPrice;
 }

@@ -1,8 +1,9 @@
 #pragma once
 
-#include "defs.h"
+#include "matching/utils/defs.h"
+#include <string> 
 
-namespace matching::exchange
+namespace matching::exchange::data
 {
 
     class Order
@@ -15,11 +16,11 @@ namespace matching::exchange
                 gOrderPrice(orderPrice)
             {
                 if (side == "BUY")
-                    gSide = OrderBookSide::Buy;
+                    gOrderSide = OrderBookSide::Buy;
                 else if (side == "SELL")
-                    gSide = OrderBookSide::Sell;
+                    gOrderSide = OrderBookSide::Sell;
                 else
-                    gSide = OrderBookSide::Invalid;
+                    gOrderSide = OrderBookSide::Invalid;
             }
             virtual ~Order() = default;
 
@@ -29,15 +30,18 @@ namespace matching::exchange
             void setOrderPrice(const double& orderPrice);
 
             int getOrderId() const {return gOrderId;}
-            OrderBookSide getOrderSide()const {return gSide;}
+            OrderBookSide getOrderSide()const {return gOrderSide;}
             int getOrderQuantity()const {return gOrderQuantity;}
             double getOrderPrice()const {return gOrderPrice;}
 
             std::string to_string() const;
 
+            Order* next = nullptr;
+            Order* previous = nullptr;
+
         private:
             int gOrderId;
-            OrderBookSide gSide;
+            OrderBookSide gOrderSide;
             int gOrderQuantity;
             double gOrderPrice;
     };
