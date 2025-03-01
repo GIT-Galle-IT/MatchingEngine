@@ -4,6 +4,8 @@
 #include <unordered_map>
 #include <iostream>
 
+// TODO: try implementing buy sell order book differentiation
+
 namespace matching::exchange::data
 {
     class OrderBook final
@@ -13,7 +15,7 @@ namespace matching::exchange::data
             virtual ~OrderBook() = default;
 
             void init();
-            void addOrder(int orderId, std::string OrderSide, double price, int qty);
+            void addOrder(int orderId, int instrumentId, int userId, std::string orderSide, double price, int qty);
             void cancelOrder(int orderId, std::string OrderSide, double price);
 
             std::unordered_map<double, Order*> getMap() { return priceTimePriotityOrderBook; }

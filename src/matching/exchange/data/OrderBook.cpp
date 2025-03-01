@@ -1,16 +1,19 @@
 #include "OrderBook.h"
 
 //TODO: need to check the matching logic and possible enhancement, have a chat
+//TODO: need to add user id and instrument id filtering and usage
 
 using namespace matching::exchange::data;
 
-void OrderBook::addOrder(int orderId, std::string OrderSide, double price, int qty)
+void OrderBook::addOrder(int orderId, int instrumentId, int userId, std::string orderSide, double price, int qty)
 {
-    double remainingQuantity = match(orderId, OrderSide, price, qty);
-    if (remainingQuantity <= 0) return;
+    double remainingQuantity = match(orderId, orderSide, price, qty);
+    if (remainingQuantity <= 0)
+        return;
 
-    Order* order = memPool.allocate();
-    if (!order) return;
+    Order* order = memPool.allocate(orderId, instrumentId, userId, orderSide, price, qty);
+    if (!order)
+        return;
 
     if (isPriceLevelExists(price))
     {

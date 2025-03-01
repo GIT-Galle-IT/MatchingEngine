@@ -71,6 +71,8 @@ file(GLOB_RECURSE SOURCES_FILES
     ${CMAKE_SOURCE_DIR}/src/matching/exchange/impl/*.cpp
     ${CMAKE_SOURCE_DIR}/src/matching/exchang/*.cpp
     ${CMAKE_SOURCE_DIR}/src/matching/gbase/*.cpp
+    ${CMAKE_SOURCE_DIR}/src/matching/refdata/data/*.cpp
+    ${CMAKE_SOURCE_DIR}/src/matching/refdata/impl/*.cpp
     ${CMAKE_SOURCE_DIR}/src/matching/utils/*.cpp
 )
 
@@ -78,6 +80,8 @@ file(GLOB_RECURSE HEADERS_FILES
     ${CMAKE_SOURCE_DIR}/src/matching/exchange/data/*.h
     ${CMAKE_SOURCE_DIR}/src/matching/exchange/impl/*.h
     ${CMAKE_SOURCE_DIR}/src/matching/exchang/*.h
+    ${CMAKE_SOURCE_DIR}/src/matching/refdata/data/*.h
+    ${CMAKE_SOURCE_DIR}/src/matching/refdata/impl/*.h
     ${CMAKE_SOURCE_DIR}/src/matching/gbase/*.h
     ${CMAKE_SOURCE_DIR}/src/matching/utils/*.h
 )
