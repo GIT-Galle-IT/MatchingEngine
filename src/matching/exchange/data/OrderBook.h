@@ -18,6 +18,8 @@ namespace matching::exchange::data
 
             std::unordered_map<double, Order*> getMap() { return priceTimePriotityOrderBook; }
             bool isPriceLevelExists(double price);
+            Order* getCurrentMaxPriority(double price);
+            bool setCurrentMaxPriority(double price, Order* priorityOrder);
 
             void setPassiveOrderBook(OrderBook* orderBook);
 
@@ -25,6 +27,8 @@ namespace matching::exchange::data
 
         private:
             double match(int orderId, std::string OrderSide, double price, int qty); 
+            double MatchSellOrder(double price, double remainingQty);
+            double MatchBuyOrder(double price, double remainingQty);
 
             std::unordered_map<double, Order*> priceTimePriotityOrderBook;
             gbase::MemoryPool<Order> memPool;

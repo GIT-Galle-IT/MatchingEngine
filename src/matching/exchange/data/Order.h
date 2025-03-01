@@ -3,6 +3,8 @@
 #include "matching/utils/defs.h"
 #include <string> 
 
+//TODO: try to remove string comparisons - move order side mapping to order gateway 
+
 namespace matching::exchange::data
 {
 
