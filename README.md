@@ -9,3 +9,18 @@
 
 # Running benchmark
 `cd build && ./benchmark_me`
+
+
+# Branch naming convention
+  g-it/<type>/<dev-name>/<task-brief>
+  type
+    - dev
+    - test
+    ....
+    
+# Commit naming convention
+  <action>[<component name>] - <description>
+  action 
+    - Add
+    - Update
+    ...
