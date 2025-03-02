@@ -26,7 +26,7 @@ int main()
     std::cout << "Size of request: " << sizeof(message) << std::endl;
     
     // serialize message (see DemoServer to see how to deserialize this message)
-    std::stringstream oss(std::ios::binary);
+    std::stringstream oss;
     message.serialize(oss);
     std::cout << "Sending Message to server: " << message << std::endl;
     

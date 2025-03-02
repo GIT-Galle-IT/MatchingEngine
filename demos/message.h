@@ -6,8 +6,8 @@ struct Message
 {
     int int_data;
     short short_data;
-    std::string string = "";
     int STRING_LENGTH = 0;
+    std::string string = "";
     bool bool_data;
     long long_data;
 
@@ -18,6 +18,7 @@ struct Message
     {
         os.write(reinterpret_cast<const char*>(&int_data), sizeof(int_data));
         os.write(reinterpret_cast<const char*>(&short_data), sizeof(short_data));
+        os.write(reinterpret_cast<const char*>(&STRING_LENGTH), sizeof(STRING_LENGTH));
         os.write(string.c_str(), string.length());
         os.write(reinterpret_cast<const char*>(&bool_data), sizeof(bool_data));
         os.write(reinterpret_cast<const char*>(&long_data), sizeof(long_data));
@@ -27,6 +28,7 @@ struct Message
     {
         is.read(reinterpret_cast<char*>(&int_data), sizeof(int_data));
         is.read(reinterpret_cast<char*>(&short_data), sizeof(short_data));
+        is.read(reinterpret_cast<char*>(&STRING_LENGTH), sizeof(STRING_LENGTH));
         char buffer[STRING_LENGTH];
         is.read(buffer, STRING_LENGTH);
         string = buffer; // copy assign

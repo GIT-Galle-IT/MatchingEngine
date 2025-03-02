@@ -12,13 +12,13 @@ class DemoServer : public GServer
     virtual void onMessage(std::string& request, std::string& response) override
     {
         // specify what to do upon recieving request
-        std::stringstream req(request, std::ios::binary);
+        std::stringstream req(request);
 
         // deserilzie specified message to existing message object
         message.deserialize(req);
         std::cout << message << std::endl;
         
-        response = "Hi, Client";
+        response = "Ack Message";
     }
 };
 

@@ -74,7 +74,6 @@ public:
 
     void sendData(G_SOCKFD recievengPartySocketfd, std::string& data)
     {
-        
         auto n = send(recievengPartySocketfd, data.c_str(), data.size(), 0);
         printf("sent %ld bytes\n", n);
     }
