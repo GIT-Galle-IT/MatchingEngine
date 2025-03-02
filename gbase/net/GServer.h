@@ -13,7 +13,7 @@ public:
     int start(int port);
     bool closeClientConnection(G_SOCKFD clientsockfd);
 
-    virtual void onMessage(std::string& response){};
+    virtual void onMessage(std::string& request, std::string& response){};
 };
 
 

@@ -18,7 +18,6 @@ add_executable(
     client
     DemoClient.cpp
 )
-target_compile_options(server PUBLIC -DDEBUG)
 
 target_link_libraries(server PRIVATE gbase)
 target_link_libraries(client PRIVATE gbase)

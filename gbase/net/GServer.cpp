@@ -8,17 +8,15 @@ int GServer::start(int port)
         std::cerr << "Server failed to start\n" << errno;
         return 1;
     }
-    std::cout << "Server listening on port " << port << "\n";
     while (true)
     {
         G_SOCKFD client = m_server.accept();
+        std::string request, response;
         if (client != -1)
         {
-            std::cout << "Client connected!\n";
-            std::string response;
-            onMessage(response);
-            std::cout << "response: " << response;
-            m_server.sendData(client, response.c_str());
+            m_server.receiveData(client, request);
+            onMessage(request, response);
+            m_server.sendData(client, response);
             m_server.closeSocket(client);
         }
     }
