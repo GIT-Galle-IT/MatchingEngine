@@ -30,6 +30,7 @@ struct Message
         is.read(reinterpret_cast<char*>(&short_data), sizeof(short_data));
         is.read(reinterpret_cast<char*>(&STRING_LENGTH), sizeof(STRING_LENGTH));
         char buffer[STRING_LENGTH];
+        buffer[STRING_LENGTH] = '\0';
         is.read(buffer, STRING_LENGTH);
         string = buffer; // copy assign
         is.read(reinterpret_cast<char*>(&bool_data), sizeof(bool_data));

@@ -22,7 +22,7 @@ int main()
     client.connect("127.0.0.1", 9999);
     
     // create message
-    Message message{8888, 1000, "Hello", true, 9898989};
+    Message message{8888, 1000, "Hello, Server| this is an message", true, 9898989};
     std::cout << "Size of request: " << sizeof(message) << std::endl;
     
     // serialize message (see DemoServer to see how to deserialize this message)
