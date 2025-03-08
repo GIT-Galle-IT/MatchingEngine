@@ -49,4 +49,3 @@ Commits should follow the naming convention:
 Add[Auth] - Implement user login feature
 Update[DB] - Optimize query performance
 ```
-
