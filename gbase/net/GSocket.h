@@ -80,7 +80,8 @@ public:
 
     void sendData(G_SOCKFD recievengPartySocketfd, std::stringstream& data)
     {
-        const char* _ = data.str().c_str();
+        std::string temp = data.str();
+        const char* _ = temp.c_str();
         auto n = send(recievengPartySocketfd, _, strlen(_), 0);
         printf("sent %ld bytes\n", n);
     }
