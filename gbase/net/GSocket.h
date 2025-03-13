@@ -33,8 +33,14 @@ public:
 #endif
     }
 
+    G_SOCKFD getSocketfd()
+    {
+        return sockfd;
+    }
+    
     bool create()
     {
+        // onload / direct
         sockfd = socket(AF_INET, SOCK_STREAM, 0);
         printf("Creating socket\n");
         return sockfd != -1;
@@ -75,13 +81,6 @@ public:
     void sendData(G_SOCKFD recievengPartySocketfd, std::string& data)
     {
         auto n = send(recievengPartySocketfd, data.c_str(), data.size(), 0);
-        printf("sent %ld bytes\n", n);
-    }
-
-    void sendData(G_SOCKFD recievengPartySocketfd, std::stringstream& data)
-    {
-        const char* _ = data.str().c_str();
-        auto n = send(recievengPartySocketfd, _, strlen(_), 0);
         printf("sent %ld bytes\n", n);
     }
 

@@ -16,6 +16,7 @@ class DemoServer : public GServer
 
         // deserilzie specified message to existing message object
         message.deserialize(req);
+        // match
         std::cout << message << std::endl;
         
         response = "Ack Message";
