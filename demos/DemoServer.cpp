@@ -23,7 +23,6 @@ private:
         std::cout << message << std::endl;
 
         response = "Ack Message";
-        GServer::sendToClient(response);
     }
 };
 
