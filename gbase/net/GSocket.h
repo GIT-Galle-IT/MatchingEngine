@@ -14,6 +14,7 @@
 #endif
 
 using G_SOCKFD = int;
+using G_EVENTFD = int;
 
 class GSocket
 {

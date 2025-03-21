@@ -21,7 +21,7 @@ int main()
         client.connect("127.0.0.1", 9999);
     while (true)
     { 
-        sleep(1);
+        
         // creates client
         
 
@@ -40,6 +40,7 @@ int main()
         client.send(serializedString);
 
         // close connection
+        sleep(1);
         
     }
     client.closeConnection();

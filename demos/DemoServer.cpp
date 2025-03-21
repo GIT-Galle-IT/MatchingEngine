@@ -4,12 +4,15 @@
 #include <iostream>
 #include "message.h"
 
-class DemoServer : public GServer
+class DemoServer : public GNet::GServer
 {
-    private:
+public:
+    DemoServer() : GServer(GNet::GServerMode::SYNC) {}
+
+private:
     Message message{0, 0, "0", 0, 0};
 
-    virtual void onMessage(std::string& request, std::string& response) override
+    virtual void onMessage(const std::string &request, std::string &response) override
     {
         // specify what to do upon recieving request
         std::stringstream req(request);
@@ -18,8 +21,9 @@ class DemoServer : public GServer
         message.deserialize(req);
         // match
         std::cout << message << std::endl;
-        
+
         response = "Ack Message";
+        GServer::sendToClient(response);
     }
 };
 
@@ -27,7 +31,7 @@ int main()
 {
     //  define server object
     DemoServer server;
-    
+
     //  start
     server.start(9999);
 

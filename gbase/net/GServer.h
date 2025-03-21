@@ -2,24 +2,48 @@
 
 #include "GSocket.h"
 #include <map>
+#include <queue>
+#include <vector>
+#include <sys/eventfd.h>
+#include <net/Defs.h>
 
-class GServer
+namespace GNet
 {
-private:
-    GSocket m_server;
-    fd_set readfds;
-    fd_set writefds;
-    struct timeval tv;
+    enum GServerMode : int
+    {
+        SYNC,
+        ASYNC
+    };
 
-    std::map<G_SOCKFD, bool /*ready to close or not*/> clientSockets;
-public:
-    GServer() = default;
-    ~GServer() = default;
+    class GServer
+    {
+    private:
+        GSocket m_serverSocket;
 
-    int start(int port);
-    bool closeClientConnection(G_SOCKFD clientsockfd);
+        fd_set readfds;
+        fd_set writefds;
 
-    virtual void onMessage(std::string& request, std::string& response){};
-};
+        struct timeval tv;
 
+        std::queue<std::string> incomingMsgBuffer;
+        std::queue<std::string> outgoingMsgBuffer;
 
+        G_EVENTFD eventNotifyingFileDiscriptor;
+
+        std::vector<G_SOCKFD> m_clientSockets;
+        GServerMode m_serverMode{GNet::GServerMode::SYNC};
+
+        void startSyncLoop();
+        void startAsyncLoop();
+
+    public:
+        GServer(GServerMode serverMode) : m_serverMode(serverMode) {}
+        ~GServer() = default;
+
+        int start(int port);
+        bool closeClientConnection(G_SOCKFD clientsockfd);
+        virtual void sendToClient(const std::string &data);
+
+        virtual void onMessage(const std::string &request, std::string &response) {};
+    };
+} // namespace GServer
