@@ -16,6 +16,7 @@ namespace gbase
     class ThreadPool
     {
     public:
+        // task
         ThreadPool(size_t numThreads);
         ~ThreadPool();
 
@@ -55,11 +56,11 @@ namespace gbase
         }
     }
 
-    void ThreadPool::enqueue(std::function<void()> task)
+    void ThreadPool::enqueue(std::function<void()> message)
     {
         {
             std::unique_lock<std::mutex> lock(mutexForQueue);
-            queue.push(std::move(task));
+            queue.push(std::move(message));
         }
         cond.notify_one();
     }
@@ -74,10 +75,12 @@ namespace gbase
                 cond.wait(lock, [&]{return stop || !queue.empty();});
                 if (stop && queue.empty())
                     return;
-                task = std::move(queue.front());
+                message = std::move(queue.front());
+                auto result = ME.match(message);
                 queue.pop();
             }
             task();
+            
         }
     }
 }

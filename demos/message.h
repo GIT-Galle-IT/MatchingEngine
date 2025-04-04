@@ -2,11 +2,12 @@
 #include <string>
 
 // predefine message
+// change according to order book object structure
 struct Message
 {
     int int_data;
     short short_data;
-    int STRING_LENGTH = 0;
+    int STRING_LENGTH = 150;
     std::string string = "";
     bool bool_data;
     long long_data;
