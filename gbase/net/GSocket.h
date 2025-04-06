@@ -82,7 +82,7 @@ public:
     void sendData(G_SOCKFD recievengPartySocketfd, std::string& data)
     {
         auto n = send(recievengPartySocketfd, data.c_str(), data.size(), 0);
-        printf("sent %ld bytes\n", n);
+        // printf("sent %ld bytes\n", n);
     }
 
     void receiveData(G_SOCKFD clientSocketfd, std::string& data)
@@ -96,7 +96,7 @@ public:
             if (n > 0)
             {
                 buffer[n] = '\0';
-                printf("read %ld bytes\n", n);
+                // printf("read %ld bytes\n", n);
                 for (size_t i = 0; i < n; i++)
                 {
                     std::string c(1, buffer[i]); // copy byte by byte (find more effcient way)
