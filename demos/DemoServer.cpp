@@ -2,7 +2,7 @@
 #include <gbase/net/GServer.h>
 #include <sstream>
 #include <iostream>
-#include "message.h"
+#include "message.pb.cc"
 
 class DemoServer : public GNet::GServer
 {
@@ -10,17 +10,17 @@ public:
     DemoServer() : GServer(GNet::GServerMode::SYNC) {}
 
 private:
-    Message message{0, 0, "0", 0, 0};
 
     virtual void onMessage(const std::string &request, std::string &response) override
     {
         // specify what to do upon recieving request
-        std::stringstream req(request);
-
-        // deserilzie specified message to existing message object
-        message.deserialize(req);
-        // match
-        std::cout << message << std::endl;
+        demos::AddressBook addressBook;
+        addressBook.ParseFromString(request);
+        std::cout << addressBook.people()[0].id() << std::endl;
+        std::cout << addressBook.people()[0].name() << std::endl;
+        std::cout << addressBook.people()[0].email() << std::endl;
+        std::cout << addressBook.people()[0].phones()[0].number() << std::endl;
+        google::protobuf::ShutdownProtobufLibrary();
 
         response = "Ack Message";
     }

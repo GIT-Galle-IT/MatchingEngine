@@ -1,11 +1,14 @@
 #pragma once
 
-#include "GSocket.h"
+#include <net/GSocket.h>
+#include <net/Defs.h>
+
+#include <utils/Common.h>
+
 #include <map>
 #include <queue>
 #include <vector>
 #include <sys/eventfd.h>
-#include <net/Defs.h>
 
 namespace GNet
 {

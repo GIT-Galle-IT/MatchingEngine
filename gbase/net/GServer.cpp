@@ -1,4 +1,4 @@
-#include "GServer.h"
+#include <net/GServer.h>
 
 using namespace GNet;
 
@@ -14,8 +14,7 @@ int GServer::start(int port)
 {
     if (!m_serverSocket.create())
     {
-        std::cerr << "Server failed to start\n"
-                  << errno;
+        GLOG_DEBUG("Server failed to start\n")
         return 1;
     }
 
@@ -23,13 +22,13 @@ int GServer::start(int port)
     if (setsockopt(m_serverSocket.getSocketfd(), SOL_SOCKET, SO_REUSEADDR,
                    (void *)&yes, sizeof(yes)) < 0)
     {
-        fprintf(stderr, "setsockopt() failed. (%d)\n", errno);
+        GLOG_DEBUG( "setsockopt() failed. (%d)\n", errno)
+        return 1;
     }
 
     if (!m_serverSocket.bind(port) || !m_serverSocket.listen(0))
     {
-        std::cerr << "Server failed to start\n"
-                  << errno;
+        GLOG_DEBUG("Server failed to start (%d\n", errno)
         return 1;
     }
 
@@ -52,15 +51,12 @@ int GServer::start(int port)
         }
 
         // wait until either socket has data ready to be recv()d (timeout 10.5 secs)
-        tv.tv_sec = 10;
+        tv.tv_sec = 1;
         tv.tv_usec = 500000;
-        int rv = -1;
-        rv = select(maxfd + 1, &readfds, holdingEvent == Event::MESSAGE_BUFFERRED ? &writefds : NULL, NULL, &tv);
-        if (rv != -1)
+        if (select(maxfd + 1, &readfds, holdingEvent == Event::MESSAGE_BUFFERRED ? &writefds : NULL, NULL, &tv) != -1)
         {
             if (FD_ISSET(m_serverSocket.getSocketfd(), &readfds))
             {
-                std::cout << "client connected" << std::endl;
                 G_SOCKFD client = m_serverSocket.accept();
                 m_clientSockets.push_back(client);
                 continue;
@@ -71,7 +67,6 @@ int GServer::start(int port)
                 Event::NONE == static_cast<Event>(holdingEvent))
             {
                 eventfd_read(eventNotifyingFileDiscriptor, &holdingEvent);
-                std::cout << "event read : " << holdingEvent << std::endl;
                 continue;
             }
 
@@ -86,12 +81,10 @@ int GServer::start(int port)
                     m_serverSocket.receiveData(client_fd, request);
                     if (request.size() == 0)
                     {
-                        std::cout << client_fd << " : closed connection" << std::endl;
                         m_serverSocket.closeSocket(client_fd);
                         m_clientSockets.erase(m_clientSockets.begin()+index-1);
                         continue;
                     }
-                    std::cout << "request messages : " << request << std::endl;
                     if (GNet::GServerMode::SYNC ==  m_serverMode)
                     {
                         onMessage(request, response);
@@ -107,7 +100,6 @@ int GServer::start(int port)
                     Event::MESSAGE_BUFFERRED == static_cast<Event>(holdingEvent) && 
                     FD_ISSET(client_fd, &writefds) == true)
                 {
-                    std::cout << "sending messages : " << outgoingMsgBuffer.size() << " | on event - " << holdingEvent << std::endl;
                     auto data = outgoingMsgBuffer.front();
                     if (data.empty() == false)
                     {
