@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstring>
+#include <logging/gLog.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -43,7 +44,7 @@ public:
     {
         // onload / direct
         sockfd = socket(AF_INET, SOCK_STREAM, 0);
-        printf("Creating socket\n");
+        GLOG("Creating socket\n");
         return sockfd != -1;
     }
 
@@ -52,13 +53,13 @@ public:
         address.sin_family = AF_INET;
         address.sin_addr.s_addr = INADDR_ANY;
         address.sin_port = htons(port);
-        printf("Binding port %d\n", port);
+        GLOG("Binding port %d\n", port);
         return ::bind(sockfd, (struct sockaddr *)&address, sizeof(address)) == 0;
     }
 
     bool listen(int backlog = 5)
     {
-        printf("now listening...\n");
+        GLOG("now listening...\n");
         return ::listen(sockfd, backlog) == 0;
     }
 
@@ -66,7 +67,7 @@ public:
     {
         socklen_t addrlen = sizeof(address);
         auto ret = ::accept(sockfd, (struct sockaddr *)&address, &addrlen);
-        printf("Client connected %s:%d\n", inet_ntoa(address.sin_addr), address.sin_port);
+        GLOG("Client connected %s:%d\n", inet_ntoa(address.sin_addr), address.sin_port);
         return ret;
     }
 
@@ -75,14 +76,14 @@ public:
         address.sin_family = AF_INET;
         address.sin_addr.s_addr = inet_addr(ip);
         address.sin_port = htons(port);
-        printf("Connecting to %s:%d\n", ip, port);
+        GLOG("Connecting to %s:%d\n", ip, port);
         return ::connect(sockfd, (struct sockaddr *)&address, sizeof(address)) == 0;
     }
 
     void sendData(G_SOCKFD recievengPartySocketfd, std::string& data)
     {
         auto n = send(recievengPartySocketfd, data.c_str(), data.size(), 0);
-        printf("sent %ld bytes\n", n);
+        GLOG("sent %ld bytes\n", n);
     }
 
     void receiveData(G_SOCKFD clientSocketfd, std::string& data)
@@ -96,7 +97,7 @@ public:
             if (n > 0)
             {
                 buffer[n] = '\0';
-                printf("read %ld bytes\n", n);
+                GLOG("read %ld bytes\n", n);
                 for (size_t i = 0; i < n; i++)
                 {
                     std::string c(1, buffer[i]); // copy byte by byte (find more effcient way)
@@ -131,7 +132,7 @@ public:
         WSACleanup();
 #else
         close(closingSocketFD);
-        printf("Closing client connection...\n");
+        GLOG("Closing client connection...\n");
 #endif
     }
 
@@ -142,7 +143,7 @@ public:
         WSACleanup();
 #else
         close(sockfd);
-        printf("Closing connection...\n");
+        GLOG("Closing connection...\n");
 #endif
     }
 };

@@ -91,7 +91,6 @@ int GServer::start(int port)
                         m_clientSockets.erase(m_clientSockets.begin()+index-1);
                         continue;
                     }
-                    std::cout << "request messages : " << request << std::endl;
                     if (GNet::GServerMode::SYNC ==  m_serverMode)
                     {
                         onMessage(request, response);
@@ -101,7 +100,13 @@ int GServer::start(int port)
                         }
                     }
                     else if (GNet::GServerMode::ASYNC ==  m_serverMode)
+                    {
                         incomingMsgBuffer.push(request); // send to processing thread
+                        std::string response = "response from server";
+                        // m_serverSocket.sendData(client_fd, response);
+                        sendToClient(response);
+                        std::cout << "buffer size " << incomingMsgBuffer.size() << std::endl;
+                    }
                 }
                 if (GNet::GServerMode::ASYNC ==  m_serverMode &&
                     Event::MESSAGE_BUFFERRED == static_cast<Event>(holdingEvent) && 

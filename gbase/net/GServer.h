@@ -31,7 +31,7 @@ namespace GNet
         G_EVENTFD eventNotifyingFileDiscriptor;
 
         std::vector<G_SOCKFD> m_clientSockets;
-        GServerMode m_serverMode{GNet::GServerMode::SYNC};
+        GServerMode m_serverMode{GNet::GServerMode::ASYNC};
 
         void startSyncLoop();
         void startAsyncLoop();

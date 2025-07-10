@@ -1,12 +1,9 @@
 FetchContent_Declare(
   benchmark
   GIT_REPOSITORY https://github.com/google/benchmark.git
-  GIT_TAG        c58e6d0710581e3a08d65c349664128a8d9a2461 # release-1.9.1
-  FIND_PACKAGE_ARGS NAMES GTest
+  GIT_TAG        eddb0241389718a23a42db6af5f0164b6e0139af # release-1.9.1
 )
 FetchContent_MakeAvailable(benchmark)
-
-find_package(benchmark REQUIRED)
 
 add_executable(
     benchmark_me

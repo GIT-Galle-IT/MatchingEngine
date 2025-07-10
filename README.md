@@ -1,6 +1,12 @@
 # Building the project
 `mkdir build && cd build && cmake .. && make`
 
+# Building with debug log on
+`mkdir build && cd build && cmake -DDEBUG_LOG=ON .. && make`
+
+# Building with debug log off
+`mkdir build && cd build && cmake -DDEBUG_LOG=OFF .. && make`
+
 # Running ATS after the build
 `cd build && ./me`
 
