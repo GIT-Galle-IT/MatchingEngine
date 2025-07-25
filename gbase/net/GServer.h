@@ -6,6 +6,8 @@
 #include <vector>
 #include <sys/eventfd.h>
 #include <net/Defs.h>
+#include <type_traits>
+#include <utility>
 
 namespace GNet
 {
@@ -17,6 +19,15 @@ namespace GNet
 
     class GServer
     {
+        // template<typename Func, typename... Args>
+        // struct is_callable<Func(Args...)>: public std::integral_constant<bool, sizeof(is_callable_helper<Func, Args...>(0)) - 1> {};
+
+        // template<typename Func>
+        // int spawn(Func&& f)
+        // {
+
+        // }
+    
     private:
         GSocket m_serverSocket;
 
