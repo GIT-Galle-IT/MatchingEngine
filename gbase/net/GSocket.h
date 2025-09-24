@@ -44,7 +44,7 @@ public:
     {
         // onload / direct
         sockfd = socket(AF_INET, SOCK_STREAM, 0);
-        GLOG("Creating socket\n");
+        GLOG("Creating socket");
         return sockfd != -1;
     }
 
@@ -53,13 +53,13 @@ public:
         address.sin_family = AF_INET;
         address.sin_addr.s_addr = INADDR_ANY;
         address.sin_port = htons(port);
-        GLOG("Binding port %d\n", port);
+        GLOG("Binding port {}", port);
         return ::bind(sockfd, (struct sockaddr *)&address, sizeof(address)) == 0;
     }
 
     bool listen(int backlog = 5)
     {
-        GLOG("now listening...\n");
+        GLOG("now listening...");
         return ::listen(sockfd, backlog) == 0;
     }
 
@@ -67,7 +67,7 @@ public:
     {
         socklen_t addrlen = sizeof(address);
         auto ret = ::accept(sockfd, (struct sockaddr *)&address, &addrlen);
-        GLOG("Client connected %s:%d\n", inet_ntoa(address.sin_addr), address.sin_port);
+        GLOG("Client connected {}:{}", inet_ntoa(address.sin_addr), address.sin_port);
         return ret;
     }
 
@@ -76,29 +76,29 @@ public:
         address.sin_family = AF_INET;
         address.sin_addr.s_addr = inet_addr(ip);
         address.sin_port = htons(port);
-        GLOG("Connecting to %s:%d\n", ip, port);
+        GLOG("Connecting to {}:{}", ip, port);
         return ::connect(sockfd, (struct sockaddr *)&address, sizeof(address)) == 0;
     }
 
     void sendData(G_SOCKFD recievengPartySocketfd, std::string& data)
     {
         auto n = send(recievengPartySocketfd, data.c_str(), data.size(), 0);
-        GLOG("sent %ld bytes\n", n);
+        GLOG("sent {} bytes", n);
     }
 
     void receiveData(G_SOCKFD clientSocketfd, std::string& data)
     {
-        char buffer[1024];
-        ssize_t n;
+        char buffer[64];
+        ssize_t readBytes;
         int flag;
         do
         {
-            n = recv(clientSocketfd, buffer, sizeof(buffer), 0);
-            if (n > 0)
+            readBytes = recv(clientSocketfd, buffer, sizeof(buffer), 0);
+            if (readBytes > 0)
             {
-                buffer[n] = '\0';
-                GLOG("read %ld bytes\n", n);
-                for (size_t i = 0; i < n; i++)
+                buffer[readBytes] = '\0';
+                GLOG("read {} bytes", readBytes);
+                for (size_t i = 0; i < readBytes; i++)
                 {
                     std::string c(1, buffer[i]); // copy byte by byte (find more effcient way)
                     data.append(c);
@@ -108,6 +108,7 @@ public:
             }
             else
             {
+                GLOG("read {} bytes, connection closed by peer", readBytes);
                 flag = 0;
             }
         } while (flag > 0);
@@ -132,7 +133,7 @@ public:
         WSACleanup();
 #else
         close(closingSocketFD);
-        GLOG("Closing client connection...\n");
+        GLOG("Closing client connection...");
 #endif
     }
 
@@ -143,7 +144,7 @@ public:
         WSACleanup();
 #else
         close(sockfd);
-        GLOG("Closing connection...\n");
+        GLOG("Closing connection...");
 #endif
     }
 };

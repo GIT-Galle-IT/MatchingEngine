@@ -71,7 +71,7 @@ int GServer::start(int port)
                 Event::NONE == static_cast<Event>(holdingEvent))
             {
                 eventfd_read(eventNotifyingFileDiscriptor, &holdingEvent);
-                std::cout << "event read : " << holdingEvent << std::endl;
+                GLOG("event read :- {}", holdingEvent);
                 continue;
             }
 
@@ -86,7 +86,7 @@ int GServer::start(int port)
                     m_serverSocket.receiveData(client_fd, request);
                     if (request.size() == 0)
                     {
-                        std::cout << client_fd << " : closed connection" << std::endl;
+                        GLOG("client {} closed connection", client_fd);
                         m_serverSocket.closeSocket(client_fd);
                         m_clientSockets.erase(m_clientSockets.begin()+index-1);
                         continue;
@@ -105,14 +105,14 @@ int GServer::start(int port)
                         std::string response = "response from server";
                         // m_serverSocket.sendData(client_fd, response);
                         sendToClient(response);
-                        std::cout << "buffer size " << incomingMsgBuffer.size() << std::endl;
+                        GLOG("buffer size {}", incomingMsgBuffer.size());
                     }
                 }
                 if (GNet::GServerMode::ASYNC ==  m_serverMode &&
                     Event::MESSAGE_BUFFERRED == static_cast<Event>(holdingEvent) && 
                     FD_ISSET(client_fd, &writefds) == true)
                 {
-                    std::cout << "sending messages : " << outgoingMsgBuffer.size() << " | on event - " << holdingEvent << std::endl;
+                    GLOG("sending messages : {} | on event - {}", outgoingMsgBuffer.size(), holdingEvent);
                     auto data = outgoingMsgBuffer.front();
                     if (data.empty() == false)
                     {

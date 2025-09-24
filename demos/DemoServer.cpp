@@ -7,7 +7,7 @@
 class DemoServer : public GNet::GServer
 {
 public:
-    DemoServer() : GServer(GNet::GServerMode::ASYNC) {}
+    DemoServer() : GServer(GNet::GServerMode::SYNC) {}
 
 private:
     Message message{0, 0, "0", 0, 0};
