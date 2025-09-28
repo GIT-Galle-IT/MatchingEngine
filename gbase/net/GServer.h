@@ -36,8 +36,8 @@ namespace GNet
 
         struct timeval tv;
 
-        std::queue<std::string> incomingMsgBuffer;
-        std::queue<std::string> outgoingMsgBuffer;
+        std::map<G_SOCKFD, std::queue<std::string>> incomingMsgBuffer;
+        std::map<G_SOCKFD, std::queue<std::string>> outgoingMsgBuffer;
 
         G_EVENTFD eventNotifyingFileDiscriptor;
 
@@ -53,7 +53,7 @@ namespace GNet
 
         int start(int port);
         bool closeClientConnection(G_SOCKFD clientsockfd);
-        virtual void sendToClient(const std::string &data);
+        virtual void send(const G_SOCKFD &client, const std::string &data);
 
         virtual void onMessage(const std::string &request, std::string &response) {};
     };

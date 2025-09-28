@@ -63,7 +63,7 @@ public:
         return ::listen(sockfd, backlog) == 0;
     }
 
-    G_SOCKFD accept()
+    G_SOCKFD accept() noexcept
     {
         socklen_t addrlen = sizeof(address);
         auto ret = ::accept(sockfd, (struct sockaddr *)&address, &addrlen);
@@ -82,13 +82,13 @@ public:
 
     void sendData(G_SOCKFD recievengPartySocketfd, std::string& data)
     {
-        auto n = send(recievengPartySocketfd, data.c_str(), data.size(), 0);
+        auto n = ::send(recievengPartySocketfd, data.c_str(), data.size(), 0);
         GLOG("sent {} bytes", n);
     }
 
     void receiveData(G_SOCKFD clientSocketfd, std::string& data)
     {
-        char buffer[64];
+        char buffer[2048];
         ssize_t readBytes;
         int flag;
         do
@@ -123,8 +123,6 @@ public:
     {
         receiveData(sockfd, data);
     }
-
-    
 
     void closeSocket(G_SOCKFD closingSocketFD)
     {

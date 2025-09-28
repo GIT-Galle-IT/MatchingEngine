@@ -2,12 +2,13 @@
 #include <gbase/net/GServer.h>
 #include <sstream>
 #include <iostream>
+#include <gbase/logging/gLog.h>
 #include "message.h"
 
 class DemoServer : public GNet::GServer
 {
 public:
-    DemoServer() : GServer(GNet::GServerMode::SYNC) {}
+    DemoServer() : GServer(GNet::GServerMode::ASYNC) {}
 
 private:
     Message message{0, 0, "0", 0, 0};
@@ -20,7 +21,8 @@ private:
         // deserilzie specified message to existing message object
         message.deserialize(req);
         // match
-        std::cout << message << std::endl;
+        // std::cout << message << std::endl;
+        GLOG("Received message : {}", message);
 
         response = "Ack Message";
     }
