@@ -6,6 +6,8 @@
 #include <vector>
 #include <sys/eventfd.h>
 #include <net/Defs.h>
+#include <type_traits>
+#include <utility>
 
 namespace GNet
 {
@@ -17,6 +19,15 @@ namespace GNet
 
     class GServer
     {
+        // template<typename Func, typename... Args>
+        // struct is_callable<Func(Args...)>: public std::integral_constant<bool, sizeof(is_callable_helper<Func, Args...>(0)) - 1> {};
+
+        // template<typename Func>
+        // int spawn(Func&& f)
+        // {
+
+        // }
+    
     private:
         GSocket m_serverSocket;
 
@@ -25,8 +36,8 @@ namespace GNet
 
         struct timeval tv;
 
-        std::queue<std::string> incomingMsgBuffer;
-        std::queue<std::string> outgoingMsgBuffer;
+        std::map<G_SOCKFD, std::queue<std::string>> incomingMsgBuffer;
+        std::map<G_SOCKFD, std::queue<std::string>> outgoingMsgBuffer;
 
         G_EVENTFD eventNotifyingFileDiscriptor;
 
@@ -42,7 +53,7 @@ namespace GNet
 
         int start(int port);
         bool closeClientConnection(G_SOCKFD clientsockfd);
-        virtual void sendToClient(const std::string &data);
+        virtual void send(const G_SOCKFD &client, const std::string &data);
 
         virtual void onMessage(const std::string &request, std::string &response) {};
     };

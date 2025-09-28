@@ -18,16 +18,13 @@ int main()
 {
     int i = 0;
     DemoClient client;
-        client.connect("127.0.0.1", 9999);
+    client.connect("127.0.0.1", 9999);
     while (true)
-    { 
-        
-        // creates client
-        
+    {
 
         // create message
         i++;
-        Message message{8888, 1000, "Hello, Server| this is an message", true, i};
+        Message message{8888, 1000, "Hello, Server request from clienteles", true, i};
         std::cout << "Size of request: " << sizeof(message) << std::endl;
 
         // serialize message (see DemoServer to see how to deserialize this message)
@@ -41,7 +38,6 @@ int main()
 
         // close connection
         sleep(1);
-        
     }
     client.closeConnection();
     return 0;
