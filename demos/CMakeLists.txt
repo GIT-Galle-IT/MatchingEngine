@@ -4,13 +4,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
+cmake_policy(SET CMP0167 NEW)
+
 find_package(Boost 1.74.0 REQUIRED system)
 
 IF (Boost_FOUND)
-    MESSAGE(STATUS "Boost found. Version: ${Boost_VERSION}")
+    message(STATUS "Boost found. Version: ${Boost_VERSION}")
     INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
-ELSE
-    MESSAGE(STATUS "Boost not found. Please install Boost 1.74 or higher.")
+ELSE()
+    message(FATAL_ERROR "Boost not found. Please install Boost 1.74 or higher.")
 ENDIF()
 
 file(GLOB_RECURSE SOURCES_FILES

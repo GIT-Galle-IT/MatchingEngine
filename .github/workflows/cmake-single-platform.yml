@@ -23,6 +23,10 @@ jobs:
           sudo apt install libboost-all-dev
           echo "BOOST_LIB_VERSION"
           cat /usr/include/boost/version.hpp | grep "BOOST_LIB_VERSION"
+          export BOOST_ROOT=/usr/local
+          export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+          export CPLUS_INCLUDE_PATH=/usr/local/include:$CPLUS_INCLUDE_PATH
+          export CMAKE_PREFIX_PATH="/usr/local:$CMAKE_PREFIX_PATH"
           
   build:
     # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
