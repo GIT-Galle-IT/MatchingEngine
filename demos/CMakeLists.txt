@@ -6,6 +6,13 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 
 find_package(Boost 1.74.0 REQUIRED system)
 
+IF (Boost_FOUND)
+    MESSAGE(STATUS "Boost found. Version: ${Boost_VERSION}")
+    INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
+ELSE
+    MESSAGE(STATUS "Boost not found. Please install Boost 1.74 or higher.")
+ENDIF()
+
 file(GLOB_RECURSE SOURCES_FILES
     ${CMAKE_SOURCE_DIR}/src/matching/gbase/net/*.cpp
 )
