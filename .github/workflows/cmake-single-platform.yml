@@ -13,6 +13,17 @@ env:
   BUILD_TYPE: Release
 
 jobs:
+  external_dependency_install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Boost
+        run: |
+          sudo apt update
+          sudo apt install build-essential python3 libbz2-dev libz-dev libicu-dev
+          sudo apt install libboost-all-dev
+          echo "BOOST_LIB_VERSION"
+          echo "cat /usr/include/boost/version.hpp | grep "BOOST_LIB_VERSION""
+          
   build:
     # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
     # You can convert this to a matrix build if you need cross-platform coverage.
