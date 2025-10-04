@@ -6,6 +6,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 
 cmake_policy(SET CMP0167 NEW)
 
+set(Boost_DEBUG ON)
 find_package(Boost REQUIRED)
 
 IF (Boost_FOUND)
