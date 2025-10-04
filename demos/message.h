@@ -45,3 +45,9 @@ std::ostream& operator<<(std::ostream& os, Message message)
         message.string << " " << message.bool_data << " " << message.long_data;
     return os;
 }
+
+std::string to_string(const Message& message)
+{
+    return std::to_string(message.int_data) + " " + std::to_string(message.short_data) + " " +
+           message.string + " " + (message.bool_data ? "true" : "false") + " " + std::to_string(message.long_data);
+}

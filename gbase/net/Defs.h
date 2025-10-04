@@ -1,5 +1,21 @@
-enum Event : int
+#pragma once
+namespace GNet
 {
-    NONE = 0,
-    MESSAGE_BUFFERRED = 1
-};
+    enum Event : int
+    {
+        NONE = 0,
+        MESSAGE_BUFFERRED = 1
+    };
+
+    enum GServerMode : int
+    {
+        SYNC,
+        ASYNC
+    };
+
+    enum YesNo : int
+    {
+        NO = 0,
+        YES = 1
+    };
+} // namespace GNet

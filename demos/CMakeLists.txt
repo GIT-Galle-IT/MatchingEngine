@@ -24,7 +24,11 @@ add_executable(
     asio
     asio_poc.cpp
 )
-
+if(DEBUG_LOG)
+    target_compile_definitions(server PRIVATE DEBUG_LOG)
+    target_compile_definitions(client PRIVATE DEBUG_LOG)
+    target_compile_definitions(asio PRIVATE DEBUG_LOG)
+endif()
 set_target_properties(asio PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(server PRIVATE gbase)
 target_link_libraries(client PRIVATE gbase)

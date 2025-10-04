@@ -13,4 +13,6 @@ add_library(gbase STATIC ${HEADERS_FILES} ${SOURCES_FILES})
 if(DEBUG_LOG)
     target_compile_definitions(gbase PRIVATE DEBUG_LOG)
 endif()
-target_include_directories(gbase PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(gbase PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/net>
+)

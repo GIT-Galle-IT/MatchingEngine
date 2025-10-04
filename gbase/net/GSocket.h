@@ -71,7 +71,7 @@ public:
         return ret;
     }
 
-    bool connect(const char *ip, int port)
+    bool connect(const char *ip, int port) noexcept
     {
         address.sin_family = AF_INET;
         address.sin_addr.s_addr = inet_addr(ip);
@@ -124,7 +124,7 @@ public:
         receiveData(sockfd, data);
     }
 
-    void closeSocket(G_SOCKFD closingSocketFD)
+    void closeSocket(G_SOCKFD closingSocketFD) noexcept
     {
 #ifdef _WIN32
         closesocket(closingSocketFD);
@@ -135,7 +135,7 @@ public:
 #endif
     }
 
-    void closeSelf()
+    void closeSelf() noexcept
     {
 #ifdef _WIN32
         closesocket(sockfd);
