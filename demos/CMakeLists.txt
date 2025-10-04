@@ -1,10 +1,20 @@
+cmake_minimum_required(VERSION 3.20)
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
-find_package(Boost 1.74.0 REQUIRED system)
+set(BOOST_INCLUDE_LIBRARIES asio regex algorithm)
+set(BOOST_ENABLE_CMAKE ON)
+FetchContent_Declare(
+  Boost
+  URL https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.7z
+  USES_TERMINAL_DOWNLOAD TRUE
+  DOWNLOAD_NO_EXTRACT FALSE
+)
+FetchContent_MakeAvailable(Boost)
 
 file(GLOB_RECURSE SOURCES_FILES
     ${CMAKE_SOURCE_DIR}/src/matching/gbase/net/*.cpp
@@ -32,4 +42,4 @@ endif()
 set_target_properties(asio PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(server PRIVATE gbase)
 target_link_libraries(client PRIVATE gbase)
-target_link_libraries(asio PRIVATE ${Boost_INCLUDE_DIRS})
+target_link_libraries(asio PRIVATE Boost::asio)
