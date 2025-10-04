@@ -17,5 +17,3 @@
         std::println("ERROR at {}:{} " formatted_log, __FILE__, __LINE__ __VA_OPT__(, ) __VA_ARGS__); \
     }
 #endif
-
-

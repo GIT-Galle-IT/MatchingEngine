@@ -16,6 +16,8 @@
 # Running benchmark
 `cd build && ./benchmark_me`
 
+# Trace the build
+`cmake -S . -B build --trace-source=CMakeLists.txt`
 
 # Branch Naming Convention
 

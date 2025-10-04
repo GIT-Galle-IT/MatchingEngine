@@ -5,15 +5,12 @@
 #include <gbase/logging/gLog.h>
 #include "message.h"
 
-class DemoServer : public GNet::GServer
+class DemoServer : public GNet::GSyncServer<>
 {
 public:
-    DemoServer() : GServer(GNet::GServerMode::ASYNC) {}
-
-private:
-    Message message{0, 0, "0", 0, 0};
-
-    virtual void onMessage(const std::string &request, std::string &response) override
+    DemoServer(int port) : GNet::GSyncServer<>(port) {};
+    ~DemoServer() = default;
+    void onMessage(const std::string &request, std::string &response) override
     {
         // specify what to do upon recieving request
         std::stringstream req(request);
@@ -21,20 +18,21 @@ private:
         // deserilzie specified message to existing message object
         message.deserialize(req);
         // match
-        // std::cout << message << std::endl;
-        GLOG("Received message : {}", message);
+        GLOG("Received message : {}", to_string(message));
 
         response = "Ack Message";
     }
+
+private:
+    Message message{0, 0, "0", 0, 0};
 };
 
 int main()
 {
     //  define server object
-    DemoServer server;
-
-    //  start
-    server.start(9999);
+    DemoServer server(9999);
+    server.init();
+    server.start();
 
     // will not reach unless ctrl+c
     return 0;
