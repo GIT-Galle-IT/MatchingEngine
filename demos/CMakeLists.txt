@@ -6,7 +6,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 
 cmake_policy(SET CMP0167 NEW)
 
-find_package(Boost 1.74.0 REQUIRED system)
+find_package(Boost REQUIRED)
 
 IF (Boost_FOUND)
     message(STATUS "Boost found. Version: ${Boost_VERSION}")
