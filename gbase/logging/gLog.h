@@ -1,6 +1,8 @@
 #if __cplusplus < 202302L
 #warning This project requires C++23 or higher!
-#define GLOG(formatted_log, ...) // do nothing
+//TODO: need update logging for lower versions of cpp
+#define GLOG(formatted_log, ...) // dull define
+#define GLOG_ERROR(formatted_log, ...) // dull define
 #else
 #include <print>
 #ifdef DEBUG_LOG
