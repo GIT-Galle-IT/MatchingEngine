@@ -34,7 +34,7 @@ using namespace GNet;
 template<>
 void GNet::GSyncServer<>::start()
 {
-    GLOG("Sync Server loop started");
+    GLOG_DEBUG_L1("Sync Server loop started");
     while (true)
     {
         FD_ZERO(&writefds);
@@ -58,7 +58,7 @@ void GNet::GSyncServer<>::start()
         {
             if (FD_ISSET(m_serverSocket.getSocketfd(), &readfds))
             {
-                GLOG("Client Connected")
+                GLOG_DEBUG_L1("Client Connected")
                 G_SOCKFD client = m_serverSocket.accept();
                 m_clientSockets.push_back(client);
                 continue;
@@ -72,10 +72,10 @@ void GNet::GSyncServer<>::start()
                 {
                     std::string request, response;
                     m_serverSocket.receiveData(client_fd, request);
-                    GLOG("read from client {}", client_fd);
+                    GLOG_DEBUG_L1("read from client {}", client_fd);
                     if (request.size() == 0)
                     {
-                        GLOG("client {} closed connection", client_fd);
+                        GLOG_DEBUG_L1("client {} closed connection", client_fd);
                         m_serverSocket.closeSocket(client_fd);
                         m_clientSockets.erase(m_clientSockets.begin() + index - 1);
                         continue;
@@ -121,7 +121,7 @@ void GNet::GAsyncServer<>::start()
         {
             if (FD_ISSET(m_serverSocket.getSocketfd(), &readfds))
             {
-                GLOG("Client Connected")
+                GLOG_DEBUG_L1("Client Connected")
                 G_SOCKFD client = m_serverSocket.accept();
                 m_clientSockets.push_back(client);
                 continue;
@@ -132,7 +132,7 @@ void GNet::GAsyncServer<>::start()
                 Event::NONE == static_cast<Event>(holdingEvent))
             {
                 eventfd_read(eventNotifyingFileDiscriptor, &holdingEvent);
-                GLOG("event read :- {}", holdingEvent);
+                GLOG_DEBUG_L1("event read :- {}", holdingEvent);
             }
 
             int index = 0;
@@ -143,15 +143,15 @@ void GNet::GAsyncServer<>::start()
                 {
                     std::string request, response;
                     m_serverSocket.receiveData(client_fd, request);
-                    GLOG("read from client {}", client_fd);
+                    GLOG_DEBUG_L1("read from client {}", client_fd);
                     if (request.size() == 0)
                     {
-                        GLOG("client {} closed connection", client_fd);
+                        GLOG_DEBUG_L1("client {} closed connection", client_fd);
                         m_serverSocket.closeSocket(client_fd);
                         m_clientSockets.erase(m_clientSockets.begin() + index - 1);
                         continue;
                     }
-                    GLOG("queuing message to client {}", client_fd);
+                    GLOG_DEBUG_L1("queuing message to client {}", client_fd);
                     incomingMsgBuffer[client_fd].push(request);
 
 #ifdef DEBUG
@@ -163,7 +163,7 @@ void GNet::GAsyncServer<>::start()
                 if (FD_ISSET(client_fd, &writefds) == true &&
                     Event::MESSAGE_BUFFERRED == static_cast<Event>(holdingEvent))
                 {
-                    GLOG("sending messages to client : {} | on event - {}", client_fd, holdingEvent);
+                    GLOG_DEBUG_L1("sending messages to client : {} | on event - {}", client_fd, holdingEvent);
                     auto it = outgoingMsgBuffer.find(client_fd); // replace with lock free queue
                     if (it == outgoingMsgBuffer.end() || it->second.empty() == true)
                         continue;

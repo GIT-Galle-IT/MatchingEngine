@@ -15,6 +15,6 @@ public:
     void closeConnection();
     void send(std::string& message);
 
-    virtual void onResponse(const char* message){};
-    virtual void onResponse(std::istream& in_message){};
+    virtual void onResponse(const char* message) = 0;
+    // virtual void onResponse(std::istream& in_message){};
 };
