@@ -61,7 +61,7 @@ namespace GNet
                 GLOG_ERROR("Server failed to start {} {}", errno, strerror(errno));
                 return;
             }
-            GLOG("Server started on port {}", port);
+            GLOG_DEBUG_L1("Server started on port {}", port);
         };
     };
 

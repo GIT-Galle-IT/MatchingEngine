@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <memory>
 
 // predefine message
 // change according to order book object structure
@@ -13,7 +14,7 @@ struct Message
     long long_data;
 
     Message(int _1, short _2, const char* _3, bool _4, long _5) :
-        int_data(_1), short_data(_2), string(_3), STRING_LENGTH(strlen(_3)), bool_data(_4), long_data(_5){}
+        int_data(_1), short_data(_2), STRING_LENGTH(strlen(_3)), string(_3),  bool_data(_4), long_data(_5){}
 
     void serialize(std::ostream& os)
     {
@@ -30,10 +31,11 @@ struct Message
         is.read(reinterpret_cast<char*>(&int_data), sizeof(int_data));
         is.read(reinterpret_cast<char*>(&short_data), sizeof(short_data));
         is.read(reinterpret_cast<char*>(&STRING_LENGTH), sizeof(STRING_LENGTH));
-        char buffer[STRING_LENGTH];
+        std::unique_ptr<char[]> buffer = std::make_unique<char[]>(STRING_LENGTH + 1);
         buffer[STRING_LENGTH] = '\0';
-        is.read(buffer, STRING_LENGTH);
-        string = buffer; // copy assign
+        is.read(buffer.get(), STRING_LENGTH);
+        string.assign(buffer.get()); // copy assign
+        buffer.reset();
         is.read(reinterpret_cast<char*>(&bool_data), sizeof(bool_data));
         is.read(reinterpret_cast<char*>(&long_data), sizeof(long_data));
     }
@@ -46,7 +48,7 @@ std::ostream& operator<<(std::ostream& os, Message message)
     return os;
 }
 
-std::string to_string(const Message& message)
+inline std::string to_string(const Message& message)
 {
     return std::to_string(message.int_data) + " " + std::to_string(message.short_data) + " " +
            message.string + " " + (message.bool_data ? "true" : "false") + " " + std::to_string(message.long_data);

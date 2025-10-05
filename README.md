@@ -10,6 +10,12 @@
 # Running ATS after the build
 `cd build && ./me`
 
+# buliding with debug info enabled
+`cmake -DDEBUG_LOG=ON -DCMAKE_BUILD_TYPE=Debug ..`
+
+# Release build
+`cmake -DDEBUG_LOG=ON -DCMAKE_BUILD_TYPE=Release ..`
+
 # Running tests
 `cd build && ./run_tests`
 

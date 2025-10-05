@@ -1,19 +1,27 @@
 #if __cplusplus < 202302L
-#warning This project requires C++23 or higher!
-#define GLOG(formatted_log, ...) // do nothing
+    #warning This project requires C++23 or higher!
+    #define GLOG_INFO(formatted_log, ...) // do nothing
 #else
-#include <print>
-#ifdef DEBUG_LOG
-#define GLOG(formatted_log, ...)                                \
-    {                                                           \
-        std::println(formatted_log __VA_OPT__(, ) __VA_ARGS__); \
-    }
-#else
-#define GLOG(formatted_log, ...) // do nothing
-#endif
-
-#define GLOG_ERROR(formatted_log, ...)                                                                \
-    {                                                                                                 \
-        std::println("ERROR at {}:{} " formatted_log, __FILE__, __LINE__ __VA_OPT__(, ) __VA_ARGS__); \
-    }
+    #include <string.h>
+    #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+    #include <print>
+    #include <thread>
+    #ifdef DEBUG_LOG
+        #define GLOG_INFO(formatted_log, ...)                           \
+            {                                                           \
+                std::println(formatted_log __VA_OPT__(, ) __VA_ARGS__); \
+            }
+        #define GLOG_DEBUG_L1(formatted_log, ...)                                    \
+            {                                                                        \
+                std::println("|{}|{}:{}|" formatted_log, std::this_thread::get_id(), \
+                            __FILENAME__, __LINE__ __VA_OPT__(, ) __VA_ARGS__);     \
+            }
+    #else
+        #define GLOG_INFO(formatted_log, ...) // do nothing
+        #define GLOG_DEBUG_L1(formatted_log, ...)  
+    #endif
+    #define GLOG_ERROR(formatted_log, ...)                                                                  \
+        {                                                                                                   \
+            std::println("|ERROR|{}:{}|" formatted_log, __FILENAME__, __LINE__ __VA_OPT__(, ) __VA_ARGS__); \
+        }
 #endif

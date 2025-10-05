@@ -10,7 +10,7 @@ public:
     virtual void onResponse(const char *message) override
     {
         // specify what to do upon recieving response
-        GLOG("onResponse : {}", message);
+        GLOG_DEBUG_L1("reponse : {}", message);
     }
 };
 
@@ -25,14 +25,12 @@ int main()
         // create message
         i++;
         Message message{8888, 1000, "Hello, Server request from clientele", true, i};
-        GLOG("Size of request: {}", sizeof(message));
+        GLOG_DEBUG_L1("Size of request: {}", sizeof(message));
 
         // serialize message (see DemoServer to see how to deserialize this message)
         std::stringstream oss;
         message.serialize(oss);
-        std::cout << "Sending Message to server: " << message << std::endl;
-        GLOG("Serialized string size: {}", oss.str().size());
-        GLOG("Serialized string: {}", oss.str());
+        GLOG_DEBUG_L1("Serialized message: {}", to_string(message));
 
         // send to the server
         auto serializedString = oss.str();

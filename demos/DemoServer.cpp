@@ -18,7 +18,7 @@ public:
         // deserilzie specified message to existing message object
         message.deserialize(req);
         // match
-        GLOG("Received message : {}", to_string(message));
+        GLOG_DEBUG_L1("Received message : {}", to_string(message));
 
         response = "Ack Message";
     }
@@ -31,6 +31,7 @@ int main()
 {
     //  define server object
     DemoServer server(9999);
+    GNet::GAsyncServer<> asyncServer;
     server.init();
     server.start();
 
