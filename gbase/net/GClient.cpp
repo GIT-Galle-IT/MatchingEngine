@@ -2,19 +2,22 @@
 
 int GClient::connect(const char *ip, int port)
 {
-    
     if (!client.create() || !client.connect(ip, port))
     {
-        std::cerr << "Client failed to connect\n";
-        return 1;
+        GLOG_ERROR("Client failed to connect {} {}", errno, strerror(errno));
+        return -1;
     }
-
     return 0;
 }
 
 void GClient::closeConnection()
 {
     client.closeSelf();
+}
+
+void GClient::asyncSend(std::string& message)
+{
+    client.sendData(message);
 }
 
 void GClient::send(std::string& message)

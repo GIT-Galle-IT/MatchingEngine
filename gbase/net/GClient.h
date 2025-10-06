@@ -14,6 +14,7 @@ public:
     int connect(const char* ip, int port);
     void closeConnection();
     void send(std::string& message);
+    void asyncSend(std::string& message);
 
     virtual void onResponse(const char* message) = 0;
     // virtual void onResponse(std::istream& in_message){};
