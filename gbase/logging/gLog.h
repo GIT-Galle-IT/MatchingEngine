@@ -1,6 +1,8 @@
 #if __cplusplus < 202302L
-    #warning This project requires C++23 or higher!
-    #define GLOG_INFO(formatted_log, ...) // do nothing
+#warning This project requires C++23 or higher!
+//TODO: need update logging for lower versions of cpp
+#define GLOG(formatted_log, ...) // dull define
+#define GLOG_ERROR(formatted_log, ...) // dull define
 #else
     #include <string.h>
     #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
