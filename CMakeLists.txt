@@ -4,6 +4,8 @@ project(MatchingEngine)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+option(DEBUG_LOG "Enable debug log" ON)
+
 add_compile_options("$<$<CONFIG:Release>:-O3>" "$<$<CONFIG:Debug>:-g>" -Wall -Wextra -Wpedantic -save-temps)
 
 # libs

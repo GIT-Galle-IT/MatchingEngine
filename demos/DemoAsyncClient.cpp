@@ -34,7 +34,7 @@ int main()
 
         // send to the server
         auto serializedString = oss.str();
-        client.send(serializedString);
+        client.asyncSend(serializedString);
 
         // close connection
         sleep(1);
