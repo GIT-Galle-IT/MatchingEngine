@@ -15,138 +15,141 @@
 #include <sstream>
 #endif
 
-using G_SOCKFD = int;
-using G_EVENTFD = int;
-
-class GSocket
+namespace gbase::net::l1
 {
-private:
-    G_SOCKFD sockfd;
-    struct sockaddr_in address;
+    using G_SOCKFD = int;
+    using G_EVENTFD = int;
+
+    class GSocket
+    {
+    private:
+        G_SOCKFD sockfd;
+        struct sockaddr_in address;
 
 #ifdef _WIN32
-    WSADATA wsa;
+        WSADATA wsa;
 #endif
 
-public:
-    GSocket() : sockfd(-1)
-    {
-#ifdef _WIN32
-        WSAStartup(MAKEWORD(2, 2), &wsa);
-#endif
-    }
-
-    [[gnu::always_inline]] inline G_SOCKFD getSocketfd() const noexcept
-    {
-        return sockfd;
-    }
-    
-    bool create()
-    {
-        // onload / direct
-        sockfd = socket(AF_INET, SOCK_STREAM, 0);
-        GLOG_DEBUG_L1("Creating socket");
-        return sockfd != -1;
-    }
-
-    bool bind(int port)
-    {
-        address.sin_family = AF_INET;
-        address.sin_addr.s_addr = INADDR_ANY;
-        address.sin_port = htons(port);
-        GLOG_DEBUG_L1("Binding port {}", port);
-        return ::bind(sockfd, (struct sockaddr *)&address, sizeof(address)) == 0;
-    }
-
-    bool listen(int backlog = 5)
-    {
-        GLOG_DEBUG_L1("now listening...");
-        return ::listen(sockfd, backlog) == 0;
-    }
-
-    G_SOCKFD accept() noexcept
-    {
-        socklen_t addrlen = sizeof(address);
-        auto ret = ::accept(sockfd, (struct sockaddr *)&address, &addrlen);
-        GLOG_DEBUG_L1("Client connected {}:{}", inet_ntoa(address.sin_addr), address.sin_port);
-        return ret;
-    }
-
-    bool connect(const char *ip, int port) noexcept
-    {
-        address.sin_family = AF_INET;
-        address.sin_addr.s_addr = inet_addr(ip);
-        address.sin_port = htons(port);
-        GLOG_DEBUG_L1("Connecting to {}:{}", ip, port);
-        return ::connect(sockfd, (struct sockaddr *)&address, sizeof(address)) == 0;
-    }
-
-    void sendData(G_SOCKFD recievengPartySocketfd, std::string& data)
-    {
-        auto n = ::send(recievengPartySocketfd, data.c_str(), data.size(), 0);
-        GLOG_DEBUG_L1("sent {} bytes", n);
-    }
-
-    void receiveData(G_SOCKFD clientSocketfd, std::string& data)
-    {
-        char buffer[2048];
-        ssize_t readBytes;
-        int flag;
-        do
+    public:
+        GSocket() : sockfd(-1)
         {
-            readBytes = recv(clientSocketfd, buffer, sizeof(buffer), 0);
-            if (readBytes > 0)
+#ifdef _WIN32
+            WSAStartup(MAKEWORD(2, 2), &wsa);
+#endif
+        }
+
+        [[gnu::always_inline]] inline G_SOCKFD getSocketfd() const noexcept
+        {
+            return sockfd;
+        }
+
+        bool create()
+        {
+            // onload / direct
+            sockfd = socket(AF_INET, SOCK_STREAM, 0);
+            GLOG_DEBUG_L1("Creating socket");
+            return sockfd != -1;
+        }
+
+        bool bind(int port)
+        {
+            address.sin_family = AF_INET;
+            address.sin_addr.s_addr = INADDR_ANY;
+            address.sin_port = htons(port);
+            GLOG_DEBUG_L1("Binding port {}", port);
+            return ::bind(sockfd, (struct sockaddr *)&address, sizeof(address)) == 0;
+        }
+
+        bool listen(int backlog = 5)
+        {
+            GLOG_DEBUG_L1("now listening...");
+            return ::listen(sockfd, backlog) == 0;
+        }
+
+        G_SOCKFD accept() noexcept
+        {
+            socklen_t addrlen = sizeof(address);
+            auto ret = ::accept(sockfd, (struct sockaddr *)&address, &addrlen);
+            GLOG_DEBUG_L1("Client connected {}:{}", inet_ntoa(address.sin_addr), address.sin_port);
+            return ret;
+        }
+
+        bool connect(const char *ip, int port) noexcept
+        {
+            address.sin_family = AF_INET;
+            address.sin_addr.s_addr = inet_addr(ip);
+            address.sin_port = htons(port);
+            GLOG_DEBUG_L1("Connecting to {}:{}", ip, port);
+            return ::connect(sockfd, (struct sockaddr *)&address, sizeof(address)) == 0;
+        }
+
+        void sendData(G_SOCKFD recievengPartySocketfd, std::string &data) const
+        {
+            auto n = ::send(recievengPartySocketfd, data.c_str(), data.size(), 0);
+            GLOG_DEBUG_L1("sent {} bytes", n);
+        }
+
+        void receiveData(G_SOCKFD clientSocketfd, std::string &data)
+        {
+            char buffer[2048];
+            ssize_t readBytes;
+            int flag;
+            do
             {
-                buffer[readBytes] = '\0';
-                GLOG_DEBUG_L1("read {} bytes", readBytes);
-                for (ssize_t i = 0; i < readBytes; i++)
+                readBytes = recv(clientSocketfd, buffer, sizeof(buffer), 0);
+                if (readBytes > 0)
                 {
-                    std::string c(1, buffer[i]); // copy byte by byte (find more effcient way)
-                    data.append(c);
+                    buffer[readBytes] = '\0';
+                    GLOG_DEBUG_L1("read {} bytes", readBytes);
+                    for (ssize_t i = 0; i < readBytes; i++)
+                    {
+                        std::string c(1, buffer[i]); // copy byte by byte (find more effcient way)
+                        data.append(c);
+                    }
+                    ioctl(clientSocketfd, FIONREAD, &flag);
+                    buffer[0] = '\0';
                 }
-                ioctl(clientSocketfd, FIONREAD, &flag);
-                buffer[0] = '\0';
-            }
-            else
-            {
-                GLOG_DEBUG_L1("read {} bytes, connection closed by peer", readBytes);
-                flag = 0;
-            }
-        } while (flag > 0);
-    }
+                else
+                {
+                    GLOG_DEBUG_L1("read {} bytes, connection closed by peer", readBytes);
+                    flag = 0;
+                }
+            } while (flag > 0);
+        }
 
-    void sendData(std::string& data)
-    {
-        sendData(sockfd, data);
-    }
+        void sendData(std::string &data)
+        {
+            sendData(sockfd, data);
+        }
 
-    void receiveData(std::string& data)
-    {
-        receiveData(sockfd, data);
-    }
+        void receiveData(std::string &data)
+        {
+            receiveData(sockfd, data);
+        }
 
-    void closeSocket(G_SOCKFD closingSocketFD) noexcept
-    {
+        void closeSocket(G_SOCKFD closingSocketFD) noexcept
+        {
 #ifdef _WIN32
-        closesocket(closingSocketFD);
-        WSACleanup();
+            closesocket(closingSocketFD);
+            WSACleanup();
 #else
-        close(closingSocketFD);
-        GLOG_DEBUG_L1("Closing client connection...");
+            close(closingSocketFD);
+            GLOG_DEBUG_L1("Closing client connection...");
 #endif
-    }
+        }
 
-    void closeSelf() noexcept
-    {
+        void closeSelf() noexcept
+        {
 #ifdef _WIN32
-        closesocket(sockfd);
-        WSACleanup();
+            closesocket(sockfd);
+            WSACleanup();
 #else
-        close(sockfd);
-        GLOG_DEBUG_L1("Closing connection...");
+            close(sockfd);
+            GLOG_DEBUG_L1("Closing connection...");
 #endif
-    }
-};
+        }
+    };
+} // namespace gbase::net
 
 /*
 // Server

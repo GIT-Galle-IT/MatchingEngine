@@ -4,7 +4,7 @@
 #include <iostream>
 #include "message.h"
 
-class DemoClient : public GClient
+class DemoClient : public gbase::net::GSyncClient<std::string>
 {
 public:
     virtual void onResponse(const char *message) override
@@ -34,11 +34,10 @@ int main()
 
         // send to the server
         auto serializedString = oss.str();
-        client.asyncSend(serializedString);
+        // client.asyncSend(serializedString);
 
         // close connection
         sleep(1);
     }
-    client.closeConnection();
     return 0;
 }

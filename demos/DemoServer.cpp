@@ -5,10 +5,10 @@
 #include <gbase/logging/gLog.h>
 #include "message.h"
 
-class DemoServer : public GNet::GSyncServer<>
+class DemoServer : public gbase::net::GSyncServer<>
 {
 public:
-    DemoServer(int port) : GNet::GSyncServer<>(port) {};
+    DemoServer(int port) : gbase::net::GSyncServer<>(port) {};
     ~DemoServer() = default;
     void onMessage(const std::string &request, std::string &response) override
     {
@@ -31,7 +31,7 @@ int main()
 {
     //  define server object
     DemoServer server(9999);
-    GNet::GAsyncServer<> asyncServer;
+    gbase::net::GAsyncServer<> asyncServer;
     server.init();
     server.start();
 

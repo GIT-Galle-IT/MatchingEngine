@@ -1,38 +1,9 @@
 #include <GServer.h>
 
-using namespace GNet;
-
-// template <GNet::GServerMode OperatingMode>
-// GNet::GServer<OperatingMode>::~GServer()
-// {
-//     m_serverSocket.closeSelf();
-// }
-
-// template <GNet::GServerMode OperatingMode>
-// void GNet::GServer<OperatingMode>::init()
-// {
-//     if (!m_serverSocket.create())
-//     {
-//         GLOG_ERROR("Socket creation error {}", errno);
-//         return;
-//     }
-
-//     if (setsockopt(m_serverSocket.getSocketfd(), SOL_SOCKET, SO_REUSEADDR,
-//                    (void *)(static_cast<int>(YesNo::YES)), sizeof(YesNo::YES)) < 0)
-//     {
-//         GLOG_ERROR("setsockopt() failed. {}", errno);
-//         return;
-//     }
-
-//     if (!m_serverSocket.bind(port) || !m_serverSocket.listen(0))
-//     {
-//         GLOG_ERROR("Server failed to start {}", errno);
-//         return;
-//     }
-// }
-
+using namespace gbase::net::l1;
+using namespace gbase::net;
 template<>
-void GNet::GSyncServer<>::start()
+void gbase::net::GSyncServer<>::start()
 {
     GLOG_DEBUG_L1("Sync Server loop started");
     while (true)
@@ -92,7 +63,7 @@ void GNet::GSyncServer<>::start()
 }
 
 template<>
-void GNet::GAsyncServer<>::start()
+void gbase::net::GAsyncServer<>::start()
 {
     int maxfd = 0;
     eventfd_t holdingEvent = 0;
@@ -128,7 +99,7 @@ void GNet::GAsyncServer<>::start()
             }
 
             if (FD_ISSET(eventNotifyingFileDiscriptor, &readfds) &&
-                GNet::GServerMode::ASYNC == m_serverMode &&
+                gbase::net::GEventHandlingMode::ASYNC == m_serverMode &&
                 Event::NONE == static_cast<Event>(holdingEvent))
             {
                 eventfd_read(eventNotifyingFileDiscriptor, &holdingEvent);
@@ -179,7 +150,7 @@ void GNet::GAsyncServer<>::start()
 }
 
 template<>
-void GNet::GAsyncServer<>::send(const G_SOCKFD &client, const std::string &data)
+void gbase::net::GAsyncServer<>::send(const G_SOCKFD &client, const std::string &data)
 {
     // Cache the iterator to avoid repeated lookups
     auto it = outgoingMsgBuffer.find(client); // replace with lock free queue

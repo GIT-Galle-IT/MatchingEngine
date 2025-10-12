@@ -1,21 +1,120 @@
 #pragma once
 
 #include <utils/Common.h>
-#include "GSocket.h"
+#include <GSocket.h>
+#include <net/Defs.h>
+#include <logging/gLog.h>
+#include <type_traits>
 
-class GClient
+namespace gbase::net
 {
-private:
-    GSocket client;
-public:
-    GClient() = default;
-    ~GClient() = default;
+    using namespace gbase::net::l1;
+    template <GEventHandlingMode E, typename T>
+    // requires std::is_move_constructible_v<T> &&
+    //          std::is_copy_constructible_v<T> &&
+    //          std::is_move_assignable_v<T> &&
+    //          std::is_copy_assignable_v<T> &&
+    // requires std::is_base_of_v<std::string, T>
+    class GClient
+    {
 
-    int connect(const char* ip, int port);
-    void closeConnection();
-    void send(std::string& message);
-    void asyncSend(std::string& message);
+    public:
+        GClient() = default;
+        virtual ~GClient() noexcept
+        {
+            close();
+        };
 
-    virtual void onResponse(const char* message) = 0;
-    // virtual void onResponse(std::istream& in_message){};
-};
+        GClient(GClient const &) = delete;      // no copy
+        GClient(GClient &&) = delete;           // no move
+        GClient operator=(GClient &) = delete;  // no copy assignment
+        GClient operator=(GClient &&) = delete; // no move assignment
+
+        inline gbase::net::GEventHandlingMode getMode() const noexcept
+        {
+            return m_serverMode;
+        }
+
+        void connect(const char *ip, int port)
+        {
+            if (ip == nullptr || port <= 0)
+            {
+                GLOG_ERROR("Invalid IP address or port");
+                exit(1);
+                return;
+            }
+
+            if (!clientSocket.create() || !clientSocket.connect(ip, port))
+            {
+                GLOG_ERROR("Client failed to connect {} {}", errno, strerror(errno));
+                exit(1);
+                return;
+            }
+        }
+
+        template <typename U = T>
+        void send(T &&message) noexcept
+        {
+            this->send(std::forward<U>(message));
+        }
+
+        void close()
+        {
+            clientSocket.closeSelf();
+        }
+
+    protected:
+        virtual void onResponse(const char *message) = 0;
+
+        virtual void send(T &message) noexcept = 0;
+        virtual void send(const T &message) noexcept = 0;
+        virtual void send(T &&message) noexcept = 0;
+
+        static constexpr GEventHandlingMode m_serverMode{E};
+        GSocket clientSocket;
+    };
+
+    template <typename T>
+    // requires std::is_base_of_v<std::string, T>
+    class GSyncClient : public GClient<GEventHandlingMode::SYNC, T>
+    {
+    public:
+        GSyncClient() : GClient<GEventHandlingMode::SYNC, T>() {};
+        virtual ~GSyncClient() = default;
+
+        GSyncClient(GSyncClient const &) = delete;      // no copy
+        GSyncClient(GSyncClient &&) = delete;           // no move
+        GSyncClient operator=(GSyncClient &) = delete;  // no copy assignment
+        GSyncClient operator=(GSyncClient &&) = delete; // no move assignment
+
+    protected:
+        virtual void onResponse(const char *message) = 0;
+
+        void send(T &message) noexcept override
+        {
+            std::string msg = "message";
+            this->clientSocket.sendData(msg);
+            std::string response;
+            this->clientSocket.receiveData(response);
+            onResponse(response.c_str());
+        };
+        void send(const T &message) noexcept override
+        {
+            std::string msg = "message"; // copy
+            this->clientSocket.sendData(msg);
+            std::string response;
+            this->clientSocket.receiveData(response);
+            onResponse(response.c_str());
+        };
+        void send(T &&message) noexcept override
+        {
+            std::string msg = "message";
+            this->clientSocket.sendData(msg);
+            std::string response;
+            this->clientSocket.receiveData(response);
+            onResponse(response.c_str());
+        };
+        ;
+    };
+
+} // namespace gbase::net
