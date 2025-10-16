@@ -10,11 +10,7 @@ namespace gbase::net
 {
     using namespace gbase::net::l1;
     template <GEventHandlingMode E, typename T>
-    // requires std::is_move_constructible_v<T> &&
-    //          std::is_copy_constructible_v<T> &&
-    //          std::is_move_assignable_v<T> &&
-    //          std::is_copy_assignable_v<T> &&
-    // requires std::is_base_of_v<std::string, T>
+    requires std::is_base_of_v<std::stringstream, T>
     class GClient
     {
 
@@ -53,9 +49,9 @@ namespace gbase::net
         }
 
         template <typename U = T>
-        void send(T &&message) noexcept
+        void send(T &&ss) noexcept
         {
-            this->send(std::forward<U>(message));
+            this->send(std::forward<U>(ss));
         }
 
         void close()
@@ -66,16 +62,16 @@ namespace gbase::net
     protected:
         virtual void onResponse(const char *message) = 0;
 
-        virtual void send(T &message) noexcept = 0;
-        virtual void send(const T &message) noexcept = 0;
-        virtual void send(T &&message) noexcept = 0;
+        virtual void send(T &ss) noexcept = 0;
+        virtual void send(const T &ss) noexcept = 0;
+        virtual void send(T &&ss) noexcept = 0;
 
         static constexpr GEventHandlingMode m_serverMode{E};
         GSocket clientSocket;
     };
 
     template <typename T>
-    // requires std::is_base_of_v<std::string, T>
+    requires std::is_base_of_v<std::stringstream, T>
     class GSyncClient : public GClient<GEventHandlingMode::SYNC, T>
     {
     public:
@@ -90,26 +86,28 @@ namespace gbase::net
     protected:
         virtual void onResponse(const char *message) = 0;
 
-        void send(T &message) noexcept override
+        void send(T &ss) noexcept override
         {
-            std::string msg = "message";
+            GLOG_DEBUG_L1("T& SS");
+            std::string msg{std::move(ss.str())};
             this->clientSocket.sendData(msg);
             std::string response;
             this->clientSocket.receiveData(response);
             onResponse(response.c_str());
         };
-        void send(const T &message) noexcept override
+        void send(const T &ss) noexcept override
         {
+            GLOG_DEBUG_L1("const T& SS");
             std::string msg = "message"; // copy
             this->clientSocket.sendData(msg);
             std::string response;
             this->clientSocket.receiveData(response);
             onResponse(response.c_str());
         };
-        void send(T &&message) noexcept override
+        void send(T &&ss) noexcept override
         {
-            std::string msg = "message";
-            this->clientSocket.sendData(msg);
+            GLOG_DEBUG_L1("T&& SS");
+            this->clientSocket.sendData(std::move(ss.str()));
             std::string response;
             this->clientSocket.receiveData(response);
             onResponse(response.c_str());

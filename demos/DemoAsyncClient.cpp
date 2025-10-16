@@ -4,7 +4,7 @@
 #include <iostream>
 #include "message.h"
 
-class DemoClient : public gbase::net::GSyncClient<std::string>
+class DemoClient : public gbase::net::GSyncClient<std::stringstream>
 {
 public:
     virtual void onResponse(const char *message) override

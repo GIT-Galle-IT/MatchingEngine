@@ -89,10 +89,18 @@ namespace gbase::net::l1
             GLOG_DEBUG_L1("sent {} bytes", n);
         }
 
+        void sendData(G_SOCKFD recievengPartySocketfd, std::string &&data) const
+        {
+            auto n = ::send(recievengPartySocketfd, data.c_str(), data.size(), 0);
+            GLOG_DEBUG_L1("sent {} bytes", n);
+        }
+
+        // TODO: ERROR HANDLING
         void receiveData(G_SOCKFD clientSocketfd, std::string &data)
         {
             char buffer[2048];
             ssize_t readBytes;
+            std::stringstream ss;
             int flag;
             do
             {
@@ -101,11 +109,7 @@ namespace gbase::net::l1
                 {
                     buffer[readBytes] = '\0';
                     GLOG_DEBUG_L1("read {} bytes", readBytes);
-                    for (ssize_t i = 0; i < readBytes; i++)
-                    {
-                        std::string c(1, buffer[i]); // copy byte by byte (find more effcient way)
-                        data.append(c);
-                    }
+                    ss.write(buffer, readBytes);
                     ioctl(clientSocketfd, FIONREAD, &flag);
                     buffer[0] = '\0';
                 }
@@ -115,9 +119,15 @@ namespace gbase::net::l1
                     flag = 0;
                 }
             } while (flag > 0);
+            data.assign(std::move(ss.str()));
         }
 
         void sendData(std::string &data)
+        {
+            sendData(sockfd, data);
+        }
+
+        void sendData(std::string &&data)
         {
             sendData(sockfd, data);
         }
