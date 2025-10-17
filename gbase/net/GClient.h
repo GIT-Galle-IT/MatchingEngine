@@ -60,7 +60,7 @@ namespace gbase::net
         }
 
     protected:
-        virtual void onResponse(const char *message) = 0;
+        virtual void onResponse(std::string &&message) = 0;
 
         virtual void send(T &ss) noexcept = 0;
         virtual void send(const T &ss) noexcept = 0;
@@ -84,33 +84,60 @@ namespace gbase::net
         GSyncClient operator=(GSyncClient &&) = delete; // no move assignment
 
     protected:
-        virtual void onResponse(const char *message) = 0;
+        virtual void onResponse(std::string&& message) = 0;
 
         void send(T &ss) noexcept override
         {
-            GLOG_DEBUG_L1("T& SS");
-            std::string msg{std::move(ss.str())};
-            this->clientSocket.sendData(msg);
-            std::string response;
-            this->clientSocket.receiveData(response);
-            onResponse(response.c_str());
+            this->clientSocket.sendData(ss.str());
+            onResponse(this->clientSocket.receiveData());
         };
+
         void send(const T &ss) noexcept override
         {
-            GLOG_DEBUG_L1("const T& SS");
-            std::string msg = "message"; // copy
-            this->clientSocket.sendData(msg);
-            std::string response;
-            this->clientSocket.receiveData(response);
-            onResponse(response.c_str());
+            this->clientSocket.sendData(ss.str());
+            onResponse(this->clientSocket.receiveData());
         };
+
         void send(T &&ss) noexcept override
         {
-            GLOG_DEBUG_L1("T&& SS");
             this->clientSocket.sendData(std::move(ss.str()));
-            std::string response;
-            this->clientSocket.receiveData(response);
-            onResponse(response.c_str());
+            onResponse(this->clientSocket.receiveData());
+            ss.clear();
+        };
+        ;
+    };
+
+    template <typename T>
+    requires std::is_base_of_v<std::stringstream, T>
+    class GAsyncClient : public GClient<GEventHandlingMode::ASYNC, T>
+    {
+    public:
+        GAsyncClient() : GClient<GEventHandlingMode::ASYNC, T>() {};
+        virtual ~GAsyncClient() = default;
+
+        GAsyncClient(GAsyncClient const &) = delete;      // no copy
+        GAsyncClient(GAsyncClient &&) = delete;           // no move
+        GAsyncClient operator=(GAsyncClient &) = delete;  // no copy assignment
+        GAsyncClient operator=(GAsyncClient &&) = delete; // no move assignment
+
+    protected:
+    
+        virtual void onResponse([[maybe_unused]] std::string&& message) override {};
+
+        void send(T &ss) noexcept override
+        {
+            this->clientSocket.sendData(ss.str());
+        };
+
+        void send(const T &ss) noexcept override
+        {
+            this->clientSocket.sendData(ss.str());
+        };
+
+        void send(T &&ss) noexcept override
+        {
+            this->clientSocket.sendData(std::move(ss.str()));
+            ss.clear();
         };
         ;
     };

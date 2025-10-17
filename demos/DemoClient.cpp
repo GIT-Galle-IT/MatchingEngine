@@ -7,7 +7,7 @@
 class DemoClient : public gbase::net::GSyncClient<std::stringstream>
 {
 public:
-    virtual void onResponse(const char *message) override
+    virtual void onResponse(std::string &&message) override
     {
         // specify what to do upon recieving response
         GLOG_DEBUG_L1("reponse : {}", message);
@@ -34,9 +34,6 @@ int main()
         message.serialize(oss);
         GLOG_DEBUG_L1("Serialized message: {}", to_string(message));
 
-        // send to the server
-        std::string serializedString{oss.str()};
-        // client.send<std::string>(std::move(serializedString));
         clientPtr->send<std::stringstream>(std::move(oss));
 
         // close connection

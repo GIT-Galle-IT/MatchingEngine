@@ -2,23 +2,21 @@
 #include <gbase/net/GClient.h>
 #include <sstream>
 #include <iostream>
+#include <memory>
 #include "message.h"
 
-class DemoClient : public gbase::net::GSyncClient<std::stringstream>
+class DemoClient : public gbase::net::GAsyncClient<std::stringstream>
 {
-public:
-    virtual void onResponse(const char *message) override
-    {
-        // specify what to do upon recieving response
-        GLOG_DEBUG_L1("reponse : {}", message);
-    }
+
 };
 
 int main()
 {
     int i = 0;
-    DemoClient client;
-    client.connect("127.0.0.1", 8080);
+    std::unique_ptr<
+        gbase::net::GClient<gbase::net::GEventHandlingMode::ASYNC, std::stringstream>> 
+            clientPtr = std::make_unique<gbase::net::GAsyncClient<std::stringstream>>();
+    clientPtr->connect("127.0.0.1", 8080);
     while (true)
     {
 
@@ -33,11 +31,11 @@ int main()
         GLOG_DEBUG_L1("Serialized message: {}", to_string(message));
 
         // send to the server
-        auto serializedString = oss.str();
+        clientPtr->send<std::stringstream>(std::move(oss));
         // client.asyncSend(serializedString);
 
         // close connection
-        sleep(1);
+        usleep(10);
     }
     return 0;
 }

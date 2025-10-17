@@ -41,8 +41,8 @@ void gbase::net::GSyncServer<>::start()
                 ++index;
                 if (FD_ISSET(client_fd, &readfds) == true)
                 {
-                    std::string request, response;
-                    m_serverSocket.receiveData(client_fd, request);
+                    std::string request {m_serverSocket.receiveData(client_fd)};
+                    std::string response;
                     GLOG_DEBUG_L1("read from client {}", client_fd);
                     if (request.size() == 0)
                     {
@@ -112,8 +112,8 @@ void gbase::net::GAsyncServer<>::start()
                 ++index;
                 if (FD_ISSET(client_fd, &readfds) == true)
                 {
-                    std::string request, response;
-                    m_serverSocket.receiveData(client_fd, request);
+                    std::string request {m_serverSocket.receiveData(client_fd)};
+                    std::string response;
                     GLOG_DEBUG_L1("read from client {}", client_fd);
                     if (request.size() == 0)
                     {
@@ -123,6 +123,7 @@ void gbase::net::GAsyncServer<>::start()
                         continue;
                     }
                     GLOG_DEBUG_L1("queuing message to client {}", client_fd);
+                    GLOG_DEBUG_L1("request: {}", request);
                     incomingMsgBuffer[client_fd].push(request);
 
 #ifdef DEBUG

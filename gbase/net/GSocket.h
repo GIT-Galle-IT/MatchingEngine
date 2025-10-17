@@ -96,7 +96,7 @@ namespace gbase::net::l1
         }
 
         // TODO: ERROR HANDLING
-        void receiveData(G_SOCKFD clientSocketfd, std::string &data)
+        std::string receiveData(G_SOCKFD clientSocketfd)
         {
             char buffer[2048];
             ssize_t readBytes;
@@ -119,7 +119,7 @@ namespace gbase::net::l1
                     flag = 0;
                 }
             } while (flag > 0);
-            data.assign(std::move(ss.str()));
+            return ss.str();
         }
 
         void sendData(std::string &data)
@@ -132,9 +132,9 @@ namespace gbase::net::l1
             sendData(sockfd, data);
         }
 
-        void receiveData(std::string &data)
+        std::string receiveData()
         {
-            receiveData(sockfd, data);
+            return receiveData(sockfd);
         }
 
         void closeSocket(G_SOCKFD closingSocketFD) noexcept
