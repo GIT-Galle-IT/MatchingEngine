@@ -4,10 +4,10 @@
 #include <iostream>
 #include "message.h"
 
-class DemoClient : public GClient
+class DemoClient : public gbase::net::GSyncClient<std::stringstream>
 {
 public:
-    virtual void onResponse(const char *message) override
+    virtual void onResponse(std::string &&message) override
     {
         // specify what to do upon recieving response
         GLOG_DEBUG_L1("reponse : {}", message);
@@ -17,8 +17,10 @@ public:
 int main()
 {
     int i = 0;
-    DemoClient client;
-    client.connect("127.0.0.1", 8080);
+    std::unique_ptr<
+        gbase::net::GClient<gbase::net::GEventHandlingMode::SYNC, std::stringstream>> 
+            clientPtr = std::make_unique<DemoClient>();
+    clientPtr->connect("127.0.0.1", 9999);
     while (true)
     {
 
@@ -32,13 +34,10 @@ int main()
         message.serialize(oss);
         GLOG_DEBUG_L1("Serialized message: {}", to_string(message));
 
-        // send to the server
-        auto serializedString = oss.str();
-        client.send(serializedString);
+        clientPtr->send<std::stringstream>(std::move(oss));
 
         // close connection
         sleep(1);
     }
-    client.closeConnection();
     return 0;
 }

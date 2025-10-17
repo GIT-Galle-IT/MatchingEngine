@@ -1,5 +1,5 @@
 #pragma once
-namespace GNet
+namespace gbase::net
 {
     enum Event : int
     {
@@ -7,7 +7,7 @@ namespace GNet
         MESSAGE_BUFFERRED = 1
     };
 
-    enum GServerMode : int
+    enum GEventHandlingMode : int
     {
         SYNC,
         ASYNC
@@ -18,4 +18,4 @@ namespace GNet
         NO = 0,
         YES = 1
     };
-} // namespace GNet
+} // namespace gbase::net

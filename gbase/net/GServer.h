@@ -10,9 +10,11 @@
 #include <utility>
 #include <Defs.h>
 
-namespace GNet
+
+namespace gbase::net
 {
-    template <GNet::GServerMode OperatingMode>
+    using namespace gbase::net::l1;
+    template <gbase::net::GEventHandlingMode T>
     class GServer
     {
     protected:
@@ -23,7 +25,7 @@ namespace GNet
 
         struct timeval tv;
 
-        static constexpr GServerMode m_serverMode{OperatingMode};
+        static constexpr GEventHandlingMode m_serverMode{T};
         std::vector<G_SOCKFD> m_clientSockets;
 
         int port;
@@ -45,6 +47,7 @@ namespace GNet
             if (!m_serverSocket.create())
             {
                 GLOG_ERROR("Socket creation error {} {}", errno, strerror(errno));
+                exit(1);
                 return;
             }
 
@@ -53,20 +56,22 @@ namespace GNet
                            (void *)(&yes), sizeof(yes)) < 0)
             {
                 GLOG_ERROR("setsockopt() failed. {} {}", errno, strerror(errno));
+                exit(1);
                 return;
             }
 
             if (!m_serverSocket.bind(port) || !m_serverSocket.listen(0))
             {
                 GLOG_ERROR("Server failed to start {} {}", errno, strerror(errno));
+                exit(1);
                 return;
             }
             GLOG_DEBUG_L1("Server started on port {}", port);
         };
     };
 
-    template <GNet::GServerMode = GNet::GServerMode::ASYNC>
-    class GAsyncServer : public GServer<GNet::GServerMode::ASYNC>
+    template <gbase::net::GEventHandlingMode = gbase::net::GEventHandlingMode::ASYNC>
+    class GAsyncServer : public GServer<gbase::net::GEventHandlingMode::ASYNC>
     {
     private:
         std::map<G_SOCKFD, std::queue<std::string>> incomingMsgBuffer;
@@ -75,7 +80,7 @@ namespace GNet
         G_EVENTFD eventNotifyingFileDiscriptor;
 
     public:
-        GAsyncServer(int port = 8080) : GServer<GNet::GServerMode::ASYNC>::GServer(port) {};
+        GAsyncServer(int port = 8080) : GServer<gbase::net::GEventHandlingMode::ASYNC>::GServer(port) {};
         ~GAsyncServer() = default;
 
         GAsyncServer(GAsyncServer const &) = delete;
@@ -88,11 +93,11 @@ namespace GNet
         virtual void send(const G_SOCKFD &client, const std::string &data);
     };
 
-    template <GNet::GServerMode = GNet::GServerMode::SYNC>
-    class GSyncServer : public GServer<GNet::GServerMode::SYNC>
+    template <gbase::net::GEventHandlingMode = gbase::net::GEventHandlingMode::SYNC>
+    class GSyncServer : public GServer<gbase::net::GEventHandlingMode::SYNC>
     {
     public:
-        GSyncServer(int port = 8080) : GServer<GNet::GServerMode::SYNC>::GServer(port) {};
+        GSyncServer(int port = 8080) : GServer<gbase::net::GEventHandlingMode::SYNC>::GServer(port) {};
         ~GSyncServer() = default;
 
         GSyncServer(GSyncServer const &) = delete;

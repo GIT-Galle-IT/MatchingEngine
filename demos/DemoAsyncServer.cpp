@@ -8,7 +8,7 @@
 int main()
 {
     //  define server object
-    GNet::GAsyncServer<> asyncServer; // at 8080
+    gbase::net::GAsyncServer<> asyncServer; // at 8080
     asyncServer.init();
     asyncServer.start();
 

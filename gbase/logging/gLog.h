@@ -15,7 +15,7 @@
             }
         #define GLOG_DEBUG_L1(formatted_log, ...)                                    \
             {                                                                        \
-                std::println("|{}|{}:{}|" formatted_log, std::this_thread::get_id(), \
+                std::println("| {} | {}:{} |" formatted_log, std::this_thread::get_id(), \
                             __FILENAME__, __LINE__ __VA_OPT__(, ) __VA_ARGS__);     \
             }
     #else
@@ -24,6 +24,6 @@
     #endif
     #define GLOG_ERROR(formatted_log, ...)                                                                  \
         {                                                                                                   \
-            std::println("|ERROR|{}:{}|" formatted_log, __FILENAME__, __LINE__ __VA_OPT__(, ) __VA_ARGS__); \
+            std::println("| ERROR | {}:{} |" formatted_log, __FILENAME__, __LINE__ __VA_OPT__(, ) __VA_ARGS__); \
         }
 #endif
