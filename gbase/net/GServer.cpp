@@ -125,7 +125,6 @@ void gbase::net::GAsyncServer<>::start()
                     GLOG_DEBUG_L1("queuing message to client {}", client_fd);
                     GLOG_DEBUG_L1("request: {}", request);
                     incomingMsgBuffer[client_fd].push(request);
-
 #ifdef DEBUG
                     std::string response = "[ACK] response from server " + std::to_string(client_fd);
                     // m_serverSocket.sendData(client_fd, response);

@@ -3,6 +3,7 @@
 #include <sstream>
 #include <iostream>
 #include <gbase/logging/gLog.h>
+#include <thread>
 #include "message.h"
 
 int main()

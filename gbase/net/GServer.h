@@ -10,7 +10,6 @@
 #include <utility>
 #include <Defs.h>
 
-
 namespace gbase::net
 {
     using namespace gbase::net::l1;

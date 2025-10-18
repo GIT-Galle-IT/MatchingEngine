@@ -4,13 +4,16 @@
 #include <GSocket.h>
 #include <net/Defs.h>
 #include <logging/gLog.h>
+#include <sys/eventfd.h>
 #include <type_traits>
+#include <memory>
+#include <boost/lockfree/queue.hpp>
 
 namespace gbase::net
 {
     using namespace gbase::net::l1;
     template <GEventHandlingMode E, typename T>
-    requires std::is_base_of_v<std::stringstream, T>
+        requires std::is_base_of_v<std::stringstream, T>
     class GClient
     {
 
@@ -71,7 +74,7 @@ namespace gbase::net
     };
 
     template <typename T>
-    requires std::is_base_of_v<std::stringstream, T>
+        requires std::is_base_of_v<std::stringstream, T>
     class GSyncClient : public GClient<GEventHandlingMode::SYNC, T>
     {
     public:
@@ -84,7 +87,7 @@ namespace gbase::net
         GSyncClient operator=(GSyncClient &&) = delete; // no move assignment
 
     protected:
-        virtual void onResponse(std::string&& message) = 0;
+        virtual void onResponse(std::string &&message) = 0;
 
         void send(T &ss) noexcept override
         {
@@ -108,7 +111,7 @@ namespace gbase::net
     };
 
     template <typename T>
-    requires std::is_base_of_v<std::stringstream, T>
+        requires std::is_base_of_v<std::stringstream, T>
     class GAsyncClient : public GClient<GEventHandlingMode::ASYNC, T>
     {
     public:
@@ -120,26 +123,102 @@ namespace gbase::net
         GAsyncClient operator=(GAsyncClient &) = delete;  // no copy assignment
         GAsyncClient operator=(GAsyncClient &&) = delete; // no move assignment
 
+        void start() noexcept
+        {
+            int maxfd = 0;
+            eventfd_t holdingEvent = 0;
+            eventNotifyingFileDiscriptor = eventfd(0, EFD_SEMAPHORE);
+            while (true)
+            {
+                FD_ZERO(&writefds);
+                FD_ZERO(&readfds);
+                FD_SET(this->clientSocket.getSocketfd(), &readfds);
+                FD_SET(this->clientSocket.getSocketfd(), &writefds);
+                FD_SET(eventNotifyingFileDiscriptor, &readfds);
+                maxfd = eventNotifyingFileDiscriptor;
+
+                // wait until either socket has data ready to be recv()d (timeout 10.5 secs)
+                tv.tv_sec = 10;
+                tv.tv_usec = 500000;
+                int rv = -1;
+                rv = select(maxfd + 1, &readfds, holdingEvent == Event::MESSAGE_BUFFERRED ? &writefds : NULL, NULL, &tv);
+                if (rv != -1)
+                {
+
+                    if (FD_ISSET(eventNotifyingFileDiscriptor, &readfds) &&
+                        Event::NONE == static_cast<Event>(holdingEvent))
+                    {
+                        eventfd_read(eventNotifyingFileDiscriptor, &holdingEvent);
+                        GLOG_DEBUG_L1("event read :- {}", holdingEvent);
+                    }
+
+                    if (FD_ISSET(this->clientSocket.getSocketfd(), &readfds) == true)
+                    {
+                        auto request = this->clientSocket.receiveData().c_str();
+                        if (strlen(request) == 0)
+                        {
+                            this->clientSocket.closeSelf();
+                            break;
+                        }
+                        incomingMsgQueue.push(request);
+                    }
+
+                    if (FD_ISSET(this->clientSocket.getSocketfd(), &writefds) == true &&
+                        Event::MESSAGE_BUFFERRED == static_cast<Event>(holdingEvent))
+                    {
+                        if (outgoingMsgQueue.empty())
+                        {
+                            holdingEvent = static_cast<eventfd_t>(Event::NONE);
+                            continue;
+                        }
+                        const char *data = nullptr;
+                        auto hurray = outgoingMsgQueue.pop(data);
+                        if (hurray)
+                            this->clientSocket.sendData(data);
+                    }
+                }
+            }
+        }
+
+        template <typename U = T>
+        void send(T &&ss) noexcept
+        {
+            this->send(std::forward<U>(ss));
+            eventfd_write(eventNotifyingFileDiscriptor, static_cast<int>(Event::MESSAGE_BUFFERRED));
+        }
+
     protected:
-    
-        virtual void onResponse([[maybe_unused]] std::string&& message) override {};
+        virtual void onResponse([[maybe_unused]] std::string &&message) override {};
 
         void send(T &ss) noexcept override
         {
-            this->clientSocket.sendData(ss.str());
+            std::string str = ss.str(); // make a copy to ensure data validity
+            incomingMsgQueue.push(str.c_str());
         };
 
         void send(const T &ss) noexcept override
         {
-            this->clientSocket.sendData(ss.str());
+            std::string str = ss.str(); // make a copy to ensure data validity
+            incomingMsgQueue.push(str.c_str());
         };
 
         void send(T &&ss) noexcept override
         {
-            this->clientSocket.sendData(std::move(ss.str()));
+            std::string str{ss.str()};
+            incomingMsgQueue.push(str.c_str());
             ss.clear();
         };
-        ;
+
+    private:
+        boost::lockfree::queue<const char *> incomingMsgQueue{1024};
+        boost::lockfree::queue<const char *> outgoingMsgQueue{1024};
+
+        fd_set readfds;
+        fd_set writefds;
+
+        struct timeval tv;
+
+        eventfd_t eventNotifyingFileDiscriptor{0};
     };
 
 } // namespace gbase::net

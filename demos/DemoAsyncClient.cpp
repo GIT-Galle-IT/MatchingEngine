@@ -7,35 +7,46 @@
 
 class DemoClient : public gbase::net::GAsyncClient<std::stringstream>
 {
-
 };
 
 int main()
 {
-    int i = 0;
     std::unique_ptr<
-        gbase::net::GClient<gbase::net::GEventHandlingMode::ASYNC, std::stringstream>> 
-            clientPtr = std::make_unique<gbase::net::GAsyncClient<std::stringstream>>();
+        gbase::net::GClient<gbase::net::GEventHandlingMode::ASYNC, std::stringstream>>
+        clientPtr = std::make_unique<gbase::net::GAsyncClient<std::stringstream>>();
     clientPtr->connect("127.0.0.1", 8080);
-    while (true)
-    {
 
-        // create message
-        i++;
-        Message message{8888, 1000, "Hello, Server request from clientele", true, i};
-        GLOG_DEBUG_L1("Size of request: {}", sizeof(message));
+    std::thread clientThread([&clientPtr]()
+                             {
+                                GLOG_INFO("Starting async client event loop...");
+        gbase::net::GAsyncClient<std::stringstream>* asyncClient = 
+            static_cast<gbase::net::GAsyncClient<std::stringstream>*>(clientPtr.get());
+            asyncClient->start(); });
+    
+    std::thread producerThread([&clientPtr]()
+                               {
+        int i = 0;
+        while (true)
+        {
 
-        // serialize message (see DemoServer to see how to deserialize this message)
-        std::stringstream oss;
-        message.serialize(oss);
-        GLOG_DEBUG_L1("Serialized message: {}", to_string(message));
+            // create message
+            i++;
+            Message message{8888, 1000, "Hello, Server request from clientele", true, i};
+            GLOG_DEBUG_L1("Size of request: {}", sizeof(message));
 
-        // send to the server
-        clientPtr->send<std::stringstream>(std::move(oss));
-        // client.asyncSend(serializedString);
+            // serialize message (see DemoServer to see how to deserialize this message)
+            std::stringstream oss;
+            message.serialize(oss);
+            GLOG_DEBUG_L1("Serialized message: {}", to_string(message));
 
-        // close connection
-        usleep(10);
-    }
+            // send to the server
+            clientPtr->send<std::stringstream>(std::move(oss));
+
+            // close connection
+            usleep(1000000);
+        } });
+        clientThread.join();
+    producerThread.join();
+
     return 0;
 }
