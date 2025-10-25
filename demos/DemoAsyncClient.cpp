@@ -18,7 +18,6 @@ int main()
 
     std::thread clientThread([&clientPtr]()
                              {
-                                GLOG_INFO("Starting async client event loop...");
         gbase::net::GAsyncClient<std::stringstream>* asyncClient = 
             static_cast<gbase::net::GAsyncClient<std::stringstream>*>(clientPtr.get());
             asyncClient->start(); });
@@ -26,6 +25,8 @@ int main()
     std::thread producerThread([&clientPtr]()
                                {
         int i = 0;
+        gbase::net::GAsyncClient<std::stringstream>* asyncClient = 
+            static_cast<gbase::net::GAsyncClient<std::stringstream>*>(clientPtr.get());
         while (true)
         {
 
@@ -40,7 +41,7 @@ int main()
             GLOG_DEBUG_L1("Serialized message: {}", to_string(message));
 
             // send to the server
-            clientPtr->send<std::stringstream>(std::move(oss));
+            asyncClient->send<std::stringstream>(std::move(oss));
 
             // close connection
             usleep(1000000);
