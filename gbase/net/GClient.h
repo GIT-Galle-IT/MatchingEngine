@@ -125,6 +125,7 @@ namespace gbase::net
 
         void start() noexcept
         {
+            GLOG_DEBUG_L1("Starting async client event loop...");
             int maxfd = 0;
             eventfd_t holdingEvent = 0;
             eventNotifyingFileDiscriptor = eventfd(0, EFD_SEMAPHORE);
@@ -144,7 +145,7 @@ namespace gbase::net
                 rv = select(maxfd + 1, &readfds, holdingEvent == Event::MESSAGE_BUFFERRED ? &writefds : NULL, NULL, &tv);
                 if (rv != -1)
                 {
-
+                    GLOG_DEBUG_L1("Select returned {}", rv);
                     if (FD_ISSET(eventNotifyingFileDiscriptor, &readfds) &&
                         Event::NONE == static_cast<Event>(holdingEvent))
                     {
@@ -154,6 +155,7 @@ namespace gbase::net
 
                     if (FD_ISSET(this->clientSocket.getSocketfd(), &readfds) == true)
                     {
+                        GLOG_DEBUG_L1("Data available to read...");
                         auto request = this->clientSocket.receiveData().c_str();
                         if (strlen(request) == 0)
                         {
@@ -166,6 +168,7 @@ namespace gbase::net
                     if (FD_ISSET(this->clientSocket.getSocketfd(), &writefds) == true &&
                         Event::MESSAGE_BUFFERRED == static_cast<Event>(holdingEvent))
                     {
+                        GLOG_DEBUG_L1("Data available to write...");
                         if (outgoingMsgQueue.empty())
                         {
                             holdingEvent = static_cast<eventfd_t>(Event::NONE);
@@ -174,7 +177,12 @@ namespace gbase::net
                         const char *data = nullptr;
                         auto hurray = outgoingMsgQueue.pop(data);
                         if (hurray)
+                        {
+                            printf("%p\n", data);
+                            GLOG_DEBUG_L1("sending data... {}", *data);
+                            printf("%s\n", data);
                             this->clientSocket.sendData(data);
+                        }
                     }
                 }
             }
@@ -183,6 +191,8 @@ namespace gbase::net
         template <typename U = T>
         void send(T &&ss) noexcept
         {
+            GLOG_DEBUG_L1("Queueing message to send... forwarding");
+
             this->send(std::forward<U>(ss));
             eventfd_write(eventNotifyingFileDiscriptor, static_cast<int>(Event::MESSAGE_BUFFERRED));
         }
@@ -192,20 +202,29 @@ namespace gbase::net
 
         void send(T &ss) noexcept override
         {
+            GLOG_DEBUG_L1("Queueing message to send... {}", ss.str());
             std::string str = ss.str(); // make a copy to ensure data validity
-            incomingMsgQueue.push(str.c_str());
+            outgoingMsgQueue.push(str.c_str());
         };
 
         void send(const T &ss) noexcept override
         {
+            GLOG_DEBUG_L1("Queueing message to send... {}", ss.str());
+
             std::string str = ss.str(); // make a copy to ensure data validity
-            incomingMsgQueue.push(str.c_str());
+            outgoingMsgQueue.push(str.c_str());
         };
 
         void send(T &&ss) noexcept override
         {
             std::string str{ss.str()};
-            incomingMsgQueue.push(str.c_str());
+            GLOG_DEBUG_L1("Queueing message to send temp - {}", str);
+            printf("%p\n", str.c_str());
+            char* msg = new char[str.size() + 1];
+            strncpy(msg, str.c_str(), str.size());
+            msg[str.size()] = '\0';
+            printf("%s\n", *msg);
+            outgoingMsgQueue.push(msg);
             ss.clear();
         };
 
