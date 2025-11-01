@@ -10,5 +10,5 @@ add_executable(
     benchmark.cpp
     ${CMAKE_SOURCE_DIR}/tests/Setup.hpp
 )
-
-target_link_libraries(benchmark_me benchmark::benchmark)
+include_directories(${CMAKE_SOURCE_DIR})
+target_link_libraries(benchmark_me benchmark::benchmark gbase)
