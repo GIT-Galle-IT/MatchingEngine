@@ -20,7 +20,7 @@ static void BM_WithoutObjPooling(benchmark::State &state)
   for (auto _ : state)
   {
     bb.allocate_new(some_string, oss.str().size());
-    bb.release_new();
+    bb.release();
   }
 }
 

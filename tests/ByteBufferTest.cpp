@@ -6,64 +6,44 @@
 #include <chrono>
 #include <logging/gLog.h>
 #include <print>
-using namespace std::chrono;
 
-TEST_F(BaseTest, ByteBuffer_Test)
+TEST_F(BaseTest, ByteBuffer_validation_Allocate_Test)
 {
-    // Message message{8888, 1000, "Hello, Server request from clientele", true, 10000000};
-    // GLOG_DEBUG_L1("Size of request: {}", sizeof(message));
+    const auto some_string = "some string with special characters"" 12345677 \u3000d !@#$%\n/n'\'n''''";
+    gbase::ByteBuffer<std::byte> bb;
+    bb.allocate(some_string, strlen(some_string));
+    const auto buffer_ptr = bb.get();
+    for (unsigned long i = 0; i < strlen(some_string); i++) {
+        EXPECT_EQ(some_string[i], static_cast<char>(buffer_ptr.get()[i]));
+    }
 
-    // std::stringstream oss;
-    // message.serialize(oss);
-    // const char *some_string = "oss.str().c_str()";
-    // // ByteBuffer bb;
-    // bb.allocate(some_string, strlen(some_string));
-    // bb.release();
-
-    EXPECT_TRUE(true);
+    bb.release();
 }
 
-TEST_F(BaseTest, ObjectPool_Test)
+TEST_F(BaseTest, ByteBuffer_validation_Append_Test)
 {
-    class MyInt
-    {
-    public:
-        MyInt() {};
-        MyInt(int i) : value{i} {};
-        unsigned long long value;
-    };
-
-    constexpr unsigned long long SIZE_OF_POOL = 10 ;
-    GLOG_INFO("pool size {}", SIZE_OF_POOL)
-    std::println("pool size {}", SIZE_OF_POOL);
-    gbase::ObjectPool<MyInt, SIZE_OF_POOL> objPool;
-    
-    auto start = high_resolution_clock::now();
-    // std::println("sizeof(object) {}", sizeof(MyInt));
-
-    for (unsigned long long i = 0; i < SIZE_OF_POOL; i++)
-    {
-        MyInt* a = objPool.allocate();
-        a->value = i;
-    }
-    objPool.release();
-
-    auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<nanoseconds>(stop - start);
-    std::cout << duration.count()  << std::endl; // 0 seconds
-    int pool_allocation_time = duration.count();
-
-    start = high_resolution_clock::now();
-    for (unsigned long long i = 0; i < SIZE_OF_POOL; i++)
-    {
-        MyInt* a = new MyInt;
-        a->value = i;
+    const auto some_string = "some string with special characters"" 12345677 \u3000d !@#$%\n/n'\'n''''";
+    gbase::ByteBuffer<std::byte> bb;
+    bb.append(some_string, strlen(some_string));
+    const auto buffer_ptr = bb.get();
+    for (unsigned long i = 0; i < strlen(some_string); i++) {
+        EXPECT_EQ(some_string[i], static_cast<char>(buffer_ptr.get()[i]));
     }
 
-    stop = high_resolution_clock::now();
-    duration = duration_cast<nanoseconds>(stop - start);
-    std::cout << duration.count()  << std::endl; // 0 seconds
-    std::println("How many times faster object pool allocation = {}", (double) duration.count() / (double)pool_allocation_time);
+    // appending
+    bb.append(some_string, strlen(some_string));
+    const auto buffer_ptr_appended = bb.get();
+    for (unsigned long i = 0; i < 2*strlen(some_string); i++) {
+        EXPECT_EQ(some_string[i%strlen(some_string)], static_cast<char>(buffer_ptr_appended.get()[i]));
+    }
 
-    EXPECT_TRUE(true);
+    // reallocate and ignore previous bytes
+    const auto some_string_a = "abcef";
+    bb.allocate(some_string_a, strlen(some_string_a));
+    const auto buffer_ptr_reallocated = bb.get();
+    for (unsigned long i = 0; i < strlen(some_string_a); i++) {
+        EXPECT_EQ(some_string_a[i], static_cast<char>(buffer_ptr_reallocated.get()[i]));
+    }
+
+    bb.release();
 }

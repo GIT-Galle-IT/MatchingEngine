@@ -198,7 +198,7 @@ namespace gbase::net
         }
 
     protected:
-        virtual void onResponse([[maybe_unused]] std::string &&message) override {};
+        void onResponse([[maybe_unused]] std::string &&message) override {};
 
         void send(T &ss) noexcept override
         {

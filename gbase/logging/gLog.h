@@ -5,7 +5,7 @@
 #define GLOG(formatted_log, ...) // dull define
 #define GLOG_ERROR(formatted_log, ...) // dull define
 #else
-#include <cstring>
+#include <string>
 
 constexpr const char *getFileName() {
     return (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__);
@@ -22,7 +22,7 @@ inline std::string FILENAME_ = getFileName();
 #define GLOG_DEBUG_L1(formatted_log, ...)                                                 \
             {                                                                             \
                 std::println("| {} | {}:{} |" formatted_log, std::this_thread::get_id(),  \
-                            __FILENAME__, __LINE__ __VA_OPT__(, ) __VA_ARGS__);           \
+                            FILENAME_, __LINE__ __VA_OPT__(, ) __VA_ARGS__);           \
             }
 #else
 #define GLOG_INFO(formatted_log, ...) // do nothing
@@ -30,6 +30,6 @@ inline std::string FILENAME_ = getFileName();
 #endif
 #define GLOG_ERROR(formatted_log, ...)                                                                          \
         {                                                                                                       \
-            std::println("| ERROR | {}:{} |" formatted_log, __FILENAME__, __LINE__ __VA_OPT__(, ) __VA_ARGS__); \
+            std::println("| ERROR | {}:{} |" formatted_log, FILENAME_, __LINE__ __VA_OPT__(, ) __VA_ARGS__); \
         }
 #endif

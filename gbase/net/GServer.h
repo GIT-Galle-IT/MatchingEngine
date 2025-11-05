@@ -51,7 +51,7 @@ namespace gbase::net
             }
 
             int yes = static_cast<int>(YesNo::YES);
-            if (setsockopt(m_serverSocket.getSocketfd(), SOL_SOCKET, SO_REUSEADDR,
+            if (setsockopt(m_serverSocket.getSocketFileDescriptor(), SOL_SOCKET, SO_REUSEADDR,
                            (void *)(&yes), sizeof(yes)) < 0)
             {
                 GLOG_ERROR("setsockopt() failed. {} {}", errno, strerror(errno));

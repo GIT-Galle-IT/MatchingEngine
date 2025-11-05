@@ -3,15 +3,15 @@
 using namespace gbase::net::l1;
 using namespace gbase::net;
 template<>
-void gbase::net::GSyncServer<>::start()
+void GSyncServer<>::start()
 {
     GLOG_DEBUG_L1("Sync Server loop started");
     while (true)
     {
         FD_ZERO(&writefds);
         FD_ZERO(&readfds);
-        FD_SET(m_serverSocket.getSocketfd(), &readfds);
-        int maxfd = m_serverSocket.getSocketfd();
+        FD_SET(m_serverSocket.getSocketFileDescriptor(), &readfds);
+        int maxfd = m_serverSocket.getSocketFileDescriptor();
         for (auto client_fd : m_clientSockets)
         {
             FD_SET(client_fd, &readfds);
@@ -27,7 +27,7 @@ void gbase::net::GSyncServer<>::start()
         rv = select(maxfd + 1, &readfds, &writefds, NULL, &tv);
         if (rv != -1)
         {
-            if (FD_ISSET(m_serverSocket.getSocketfd(), &readfds))
+            if (FD_ISSET(m_serverSocket.getSocketFileDescriptor(), &readfds))
             {
                 GLOG_DEBUG_L1("Client Connected")
                 G_SOCKFD client = m_serverSocket.accept();
@@ -44,7 +44,7 @@ void gbase::net::GSyncServer<>::start()
                     std::string request {m_serverSocket.receiveData(client_fd)};
                     std::string response;
                     GLOG_DEBUG_L1("read from client {}", client_fd);
-                    if (request.size() == 0)
+                    if (request.empty())
                     {
                         GLOG_DEBUG_L1("client {} closed connection", client_fd);
                         m_serverSocket.closeSocket(client_fd);
@@ -63,7 +63,7 @@ void gbase::net::GSyncServer<>::start()
 }
 
 template<>
-void gbase::net::GAsyncServer<>::start()
+void GAsyncServer<>::start()
 {
     int maxfd = 0;
     eventfd_t holdingEvent = 0;
@@ -72,7 +72,7 @@ void gbase::net::GAsyncServer<>::start()
     {
         FD_ZERO(&writefds);
         FD_ZERO(&readfds);
-        FD_SET(m_serverSocket.getSocketfd(), &readfds);
+        FD_SET(m_serverSocket.getSocketFileDescriptor(), &readfds);
         FD_SET(eventNotifyingFileDiscriptor, &readfds);
         maxfd = eventNotifyingFileDiscriptor;
         for (auto client_fd : m_clientSockets)
@@ -90,7 +90,7 @@ void gbase::net::GAsyncServer<>::start()
         rv = select(maxfd + 1, &readfds, holdingEvent == Event::MESSAGE_BUFFERRED ? &writefds : NULL, NULL, &tv);
         if (rv != -1)
         {
-            if (FD_ISSET(m_serverSocket.getSocketfd(), &readfds))
+            if (FD_ISSET(m_serverSocket.getSocketFileDescriptor(), &readfds))
             {
                 GLOG_DEBUG_L1("Client Connected")
                 G_SOCKFD client = m_serverSocket.accept();
@@ -115,7 +115,7 @@ void gbase::net::GAsyncServer<>::start()
                     std::string request {m_serverSocket.receiveData(client_fd)};
                     std::string response;
                     GLOG_DEBUG_L1("read from client {}", client_fd);
-                    if (request.size() == 0)
+                    if (request.empty())
                     {
                         GLOG_DEBUG_L1("client {} closed connection", client_fd);
                         m_serverSocket.closeSocket(client_fd);
@@ -123,7 +123,6 @@ void gbase::net::GAsyncServer<>::start()
                         continue;
                     }
                     GLOG_DEBUG_L1("queuing message to client {}", client_fd);
-                    GLOG_DEBUG_L1("request: {}", request);
                     incomingMsgBuffer[client_fd].push(request);
 #ifdef DEBUG
                     std::string response = "[ACK] response from server " + std::to_string(client_fd);
@@ -150,7 +149,7 @@ void gbase::net::GAsyncServer<>::start()
 }
 
 template<>
-void gbase::net::GAsyncServer<>::send(const G_SOCKFD &client, const std::string &data)
+void GAsyncServer<>::send(const G_SOCKFD &client, const std::string &data)
 {
     // Cache the iterator to avoid repeated lookups
     auto it = outgoingMsgBuffer.find(client); // replace with lock free queue
