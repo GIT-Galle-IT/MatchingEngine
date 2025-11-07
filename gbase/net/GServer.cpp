@@ -30,7 +30,7 @@ void GSyncServer<>::start()
             if (FD_ISSET(m_serverSocket.getSocketFileDescriptor(), &readfds))
             {
                 GLOG_DEBUG_L1("Client Connected")
-                G_SOCKFD client = m_serverSocket.accept();
+                G_SOCKETFD client = m_serverSocket.accept();
                 m_clientSockets.push_back(client);
                 continue;
             }
@@ -75,7 +75,7 @@ void GAsyncServer<>::start()
         FD_SET(m_serverSocket.getSocketFileDescriptor(), &readfds);
         FD_SET(eventNotifyingFileDiscriptor, &readfds);
         maxfd = eventNotifyingFileDiscriptor;
-        for (auto client_fd : m_clientSockets)
+        for (const auto& client_fd : m_clientSockets)
         {
             FD_SET(client_fd, &readfds);
             FD_SET(client_fd, &writefds);
@@ -93,7 +93,7 @@ void GAsyncServer<>::start()
             if (FD_ISSET(m_serverSocket.getSocketFileDescriptor(), &readfds))
             {
                 GLOG_DEBUG_L1("Client Connected")
-                G_SOCKFD client = m_serverSocket.accept();
+                G_SOCKETFD client = m_serverSocket.accept();
                 m_clientSockets.push_back(client);
                 continue;
             }
@@ -112,8 +112,8 @@ void GAsyncServer<>::start()
                 ++index;
                 if (FD_ISSET(client_fd, &readfds) == true)
                 {
-                    std::string request {m_serverSocket.receiveData(client_fd)};
-                    std::string response;
+                    ByteBuffer<std::byte> bb;
+                    bb.get().reset(m_serverSocket.receiveData());
                     GLOG_DEBUG_L1("read from client {}", client_fd);
                     if (request.empty())
                     {
@@ -137,9 +137,8 @@ void GAsyncServer<>::start()
                     auto it = outgoingMsgBuffer.find(client_fd); // replace with lock free queue
                     if (it == outgoingMsgBuffer.end() || it->second.empty() == true)
                         continue;
-                    auto data = it->second.front();
-                    if (data.empty() == false)
-                        m_serverSocket.sendData(client_fd, data);
+                    const auto& byte_buffer = it->second.front();
+                    GSocket::sendData(client_fd, byte_buffer);
                     it->second.pop();
                 }
             }
@@ -149,19 +148,18 @@ void GAsyncServer<>::start()
 }
 
 template<>
-void GAsyncServer<>::send(const G_SOCKFD &client, const std::string &data)
+void GAsyncServer<>::send(const G_SOCKETFD &client, const ByteBuffer<std::byte> &data)
 {
     // Cache the iterator to avoid repeated lookups
-    auto it = outgoingMsgBuffer.find(client); // replace with lock free queue
-    if (it != outgoingMsgBuffer.end())
+    if (const auto it = outgoingMsgBuffer.find(client); it != outgoingMsgBuffer.end())
     {
         it->second.push(data);
     }
     else
     {
-        std::queue<std::string> messageQueue{};
-        messageQueue.emplace(data);
-        auto result = outgoingMsgBuffer.emplace(client, std::move(messageQueue));
+        std::queue<ByteBuffer<std::byte>> messageQueue{};
+        messageQueue.push(data);
+        outgoingMsgBuffer.emplace(client, std::move(messageQueue));
     }
-    eventfd_write(eventNotifyingFileDiscriptor, static_cast<int>(Event::MESSAGE_BUFFERRED));
+    eventfd_write(eventNotifyingFileDiscriptor, MESSAGE_BUFFERRED);
 }

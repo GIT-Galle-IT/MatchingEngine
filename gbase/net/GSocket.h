@@ -1,7 +1,6 @@
 #include <cstring>
 #include <cstddef>
 #include <logging/gLog.h>
-#include <type_traits>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
@@ -13,20 +12,23 @@
 
 namespace gbase::net::l1
 {
-    using G_SOCKFD = int;
+    using G_SOCKETFD = int;
     using G_EVENTFD = int;
 
     class GSocket
     {
-        G_SOCKFD socket_fd;
+        G_SOCKETFD socket_fd;
         sockaddr_in address{};
-        ByteBuffer<std::byte> send_buffer;
-        ByteBuffer<std::byte> receive_buffer;
+        std::shared_ptr<ByteBuffer<std::byte>> send_buffer;
+        std::shared_ptr<ByteBuffer<std::byte>> receive_buffer;
 
     public:
-        GSocket() : socket_fd(-1) {}
+        GSocket() : socket_fd(-1) {
+            send_buffer = std::make_shared<ByteBuffer<std::byte>>();
+            receive_buffer = std::make_shared<ByteBuffer<std::byte>>();
+        }
 
-        [[nodiscard]] [[gnu::always_inline]] G_SOCKFD getSocketFileDescriptor() const noexcept
+        [[nodiscard]] [[gnu::always_inline]] G_SOCKETFD getSocketFileDescriptor() const noexcept
         {
             return socket_fd;
         }
@@ -53,7 +55,7 @@ namespace gbase::net::l1
             return ::listen(socket_fd, backlog) == 0;
         }
 
-        G_SOCKFD accept() noexcept
+        G_SOCKETFD accept() noexcept
         {
             socklen_t addrlen = sizeof(address);
             const auto ret = ::accept(socket_fd, reinterpret_cast<struct sockaddr *>(&address), &addrlen);
@@ -70,17 +72,27 @@ namespace gbase::net::l1
             return ::connect(socket_fd, reinterpret_cast<sockaddr *>(&address), sizeof(address)) == 0;
         }
 
-        static void sendData(const G_SOCKFD receiving_party_socket_file_descriptor, const std::string &data) {
+        void sendData(const ByteBuffer<std::byte> &data) const
+        {
+            sendData(socket_fd, data);
+        }
+
+        void sendData(const ByteBuffer<std::byte> &&data) const
+        {
+            sendData(socket_fd, data);
+        }
+
+        static void sendData(const G_SOCKETFD receiving_party_socket_file_descriptor, const ByteBuffer<std::byte> &data) {
             sendData(receiving_party_socket_file_descriptor, std::move(data));
         }
 
-        static void sendData(const G_SOCKFD receiving_party_socket_file_descriptor, const std::string &&data) {
-            auto n = ::send(receiving_party_socket_file_descriptor, data.c_str(), data.size(), 0);
+        static void sendData(const G_SOCKETFD receiving_party_socket_file_descriptor, const ByteBuffer<std::byte> &&data) {
+            auto n = ::send(receiving_party_socket_file_descriptor, data.get().get(), data.get_filled_size(), 0);
             GLOG_DEBUG_L1("sent {} bytes", n);
         }
 
         // TODO: ERROR HANDLING
-        auto receiveData(const G_SOCKFD client_socket_file_descriptor) -> std::string
+        [[nodiscard]] auto receiveData(const G_SOCKETFD client_socket_file_descriptor) -> std::shared_ptr<ByteBuffer<std::byte>>
         {
             std::byte buffer[2048];
             const std::stringstream ss;
@@ -90,7 +102,7 @@ namespace gbase::net::l1
                 if (ssize_t readBytes = recv(client_socket_file_descriptor, buffer, sizeof(buffer), 0); readBytes > 0)
                 {
                     GLOG_DEBUG_L1("read {} bytes", readBytes);
-                    receive_buffer.append(buffer, readBytes);
+                    receive_buffer->append(buffer, readBytes);
                     ioctl(client_socket_file_descriptor, FIONREAD, &flag);
                     buffer[0] = static_cast<std::byte>('\0');
                 }
@@ -100,44 +112,24 @@ namespace gbase::net::l1
                     flag = 0;
                 }
             } while (flag > 0);
-            return ss.str();
+            return receive_buffer;
         }
 
-        void sendData(std::string &data) const
+        [[nodiscard]] std::shared_ptr<ByteBuffer<std::byte>> receiveData()
         {
-            sendData(socket_fd, data);
+            return receiveData(socket_fd);
         }
 
-        void sendData(std::string &&data) const
+        static void closeSocket(const G_SOCKETFD closingSocketFD) noexcept
         {
-            sendData(socket_fd, data);
-        }
-
-        [[nodiscard]] std::string receiveData() const
-        {
-            return "receiveData(socket_fd)";
-        }
-
-        static void closeSocket(G_SOCKFD closingSocketFD) noexcept
-        {
-#ifdef _WIN32
-            closesocket(closingSocketFD);
-            WSACleanup();
-#else
             close(closingSocketFD);
             GLOG_DEBUG_L1("Closing client connection...");
-#endif
         }
 
-        void closeSelf() noexcept
+        void closeSelf() const noexcept
         {
-#ifdef _WIN32
-            closesocket(socket_fd);
-            WSACleanup();
-#else
             close(socket_fd);
             GLOG_DEBUG_L1("Closing connection...");
-#endif
         }
     };
 } // namespace gbase::net
