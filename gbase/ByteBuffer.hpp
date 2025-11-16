@@ -7,6 +7,7 @@
 #include <new>
 #include <memory>
 #include <algorithm>
+#include <logging/gLog.h>
 
 namespace gbase {
     template<typename T>
@@ -18,23 +19,53 @@ namespace gbase {
 
     public:
         ByteBuffer() = default;
-        ByteBuffer(const ByteBuffer &) = delete;
-        ByteBuffer(ByteBuffer &&) = delete;
+        ByteBuffer(ByteBuffer &&other)
+        {
+            printf("moving byte buffer at [%p] to this byte buffer [%p]\n", (void*)&other, (void*)this);
+            if (other.get() == nullptr) return;
+            std::shared_ptr<T> other_byte_array = other.get();
+            byte_array.swap(other_byte_array);
+            buffer_size = other.get_buffer_size();
+            filled_size = other.get_filled_size();
+            other.release();
+        };
+        ByteBuffer(const ByteBuffer &other)
+        {
+            printf("copying byte buffer at [%p] to this byte buffer [%p]\n", (void*)&other, (void*)this);
+            if (other.get() == nullptr) return;
+            // allocate(*(other.get().get()), other.get_filled_size());
+            std::shared_ptr<T> other_byte_array = other.get();
+            size_t other_byte_array_size = other.get_filled_size();
+            if (buffer_size < other_byte_array_size) // need resize or complete allocate
+            {
+                T *ptr = new(malloc(sizeof(T) * other_byte_array_size)) T;
+                byte_array.reset(std::move(ptr));
+            }
+            T *_ba = byte_array.get();
+            T *_other_ba = other_byte_array.get();
+            for (size_t i = 0; i < other_byte_array_size; i++) {
+                _ba[i] = (*(_other_ba++));
+            }
+            buffer_size = buffer_size > other_byte_array_size ? buffer_size : other_byte_array_size;
+            filled_size = other_byte_array_size;
+        };
         ByteBuffer &operator=(const ByteBuffer &) = delete;
+        ByteBuffer &operator=(ByteBuffer &) = delete;
         ByteBuffer &operator=(ByteBuffer &&) = delete;
 
         ~ByteBuffer() {
             release();
         }
 
-        void allocate(const char *byteStream, const size_t size) {
+        void allocate(const char *byteStream, const size_t size) 
+        {
             if (buffer_size < size) // need resize or complete allocate
             {
                 T *ptr = new(malloc(sizeof(T) * size)) T;
                 byte_array.reset(std::move(ptr));
             }
             T *_ba = byte_array.get();
-            for (int i = 0; i < size; i++) {
+            for (size_t i = 0; i < size; i++) {
                 _ba[i] = static_cast<T>(*byteStream++);
             }
             buffer_size = buffer_size > size ? buffer_size : size;
@@ -71,7 +102,7 @@ namespace gbase {
                 byte_array.reset(std::move(ptr));
             }
             T *_ba = byte_array.get();
-            for (int i = buffer_size > 0 ? buffer_size : 0; i < buffer_size + size; i++) {
+            for (size_t i = buffer_size > 0 ? buffer_size : 0; i < buffer_size + size; i++) {
                 _ba[i] = static_cast<T>(*byteStream++);
             }
             buffer_size += size;
@@ -94,7 +125,7 @@ namespace gbase {
                 byte_array.reset(std::move(ptr));
             }
             T *_ba = byte_array.get();
-            for (int i = buffer_size > 0 ? buffer_size : 0; i < buffer_size + size; i++) {
+            for (size_t i = buffer_size > 0 ? buffer_size : 0; i < buffer_size + size; i++) {
                 _ba[i] = byteStream[i];
             }
             buffer_size += size;
