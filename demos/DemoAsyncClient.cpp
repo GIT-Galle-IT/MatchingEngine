@@ -5,37 +5,49 @@
 #include <memory>
 #include "message.h"
 
-class DemoClient : public gbase::net::GAsyncClient<std::stringstream>
+class DemoClient : public gbase::net::GAsyncClient<gbase::ByteBuffer<std::byte>>
 {
-
 };
 
 int main()
 {
-    int i = 0;
-    std::unique_ptr<
-        gbase::net::GClient<gbase::net::GEventHandlingMode::ASYNC, std::stringstream>> 
-            clientPtr = std::make_unique<gbase::net::GAsyncClient<std::stringstream>>();
-    clientPtr->connect("127.0.0.1", 8080);
-    while (true)
-    {
+    // std::unique_ptr<
+    //     gbase::net::GClient<gbase::net::GEventHandlingMode::ASYNC, gbase::ByteBuffer<std::byte>>>
+    //     clientPtr = std::make_unique<gbase::net::GAsyncClient<gbase::ByteBuffer<std::byte>>>();
+    // clientPtr->connect("127.0.0.1", 8080);
 
-        // create message
-        i++;
-        Message message{8888, 1000, "Hello, Server request from clientele", true, i};
-        GLOG_DEBUG_L1("Size of request: {}", sizeof(message));
+    // std::thread clientThread([&clientPtr]()
+    //                          {
+    //     gbase::net::GAsyncClient<gbase::ByteBuffer<std::byte>>* asyncClient = 
+    //         static_cast<gbase::net::GAsyncClient<gbase::ByteBuffer<std::byte>>*>(clientPtr.get());
+    //         asyncClient->start(); });
 
-        // serialize message (see DemoServer to see how to deserialize this message)
-        std::stringstream oss;
-        message.serialize(oss);
-        GLOG_DEBUG_L1("Serialized message: {}", to_string(message));
+    // std::thread producerThread([&clientPtr]()
+    //                            {
+    //     int i = 0;
+    //     gbase::net::GAsyncClient<gbase::ByteBuffer<std::byte>>* asyncClient = 
+    //         static_cast<gbase::net::GAsyncClient<gbase::ByteBuffer<std::byte>>*>(clientPtr.get());
+    //     while (true)
+    //     {
 
-        // send to the server
-        clientPtr->send<std::stringstream>(std::move(oss));
-        // client.asyncSend(serializedString);
+    //         // create message
+    //         i++;
+    //         Message message{8888, 1000, "Hello, Server request from clientele", true, i};
+    //         GLOG_DEBUG_L1("Size of request: {}", sizeof(message));
 
-        // close connection
-        usleep(10);
-    }
+    //         // serialize message (see DemoServer to see how to deserialize this message)
+    //         gbase::ByteBuffer<std::byte> bb;
+    //         message.serialize(bb);
+    //         GLOG_DEBUG_L1("Serialized message: {}", to_string(message));
+
+    //         // send to the server
+    //         asyncClient->send<gbase::ByteBuffer<std::byte>>(std::move(bb));
+
+    //         // close connection
+    //         usleep(1000000);
+    //     } });
+    // clientThread.join();
+    // producerThread.join();
+
     return 0;
 }

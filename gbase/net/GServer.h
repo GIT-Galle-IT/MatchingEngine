@@ -10,7 +10,6 @@
 #include <utility>
 #include <Defs.h>
 
-
 namespace gbase::net
 {
     using namespace gbase::net::l1;
@@ -26,7 +25,7 @@ namespace gbase::net
         struct timeval tv;
 
         static constexpr GEventHandlingMode m_serverMode{T};
-        std::vector<G_SOCKFD> m_clientSockets;
+        std::vector<G_SOCKETFD> m_clientSockets;
 
         int port;
 
@@ -52,7 +51,7 @@ namespace gbase::net
             }
 
             int yes = static_cast<int>(YesNo::YES);
-            if (setsockopt(m_serverSocket.getSocketfd(), SOL_SOCKET, SO_REUSEADDR,
+            if (setsockopt(m_serverSocket.getSocketFileDescriptor(), SOL_SOCKET, SO_REUSEADDR,
                            (void *)(&yes), sizeof(yes)) < 0)
             {
                 GLOG_ERROR("setsockopt() failed. {} {}", errno, strerror(errno));
@@ -70,17 +69,17 @@ namespace gbase::net
         };
     };
 
-    template <gbase::net::GEventHandlingMode = gbase::net::GEventHandlingMode::ASYNC>
-    class GAsyncServer : public GServer<gbase::net::GEventHandlingMode::ASYNC>
+    template <GEventHandlingMode = ASYNC>
+    class GAsyncServer : public GServer<ASYNC>
     {
     private:
-        std::map<G_SOCKFD, std::queue<std::string>> incomingMsgBuffer;
-        std::map<G_SOCKFD, std::queue<std::string>> outgoingMsgBuffer;
+        std::map<G_SOCKETFD, std::queue<ByteBuffer<std::byte>>> incomingMsgBuffer;
+        std::map<G_SOCKETFD, std::queue<ByteBuffer<std::byte>>> outgoingMsgBuffer;
 
         G_EVENTFD eventNotifyingFileDiscriptor;
 
     public:
-        GAsyncServer(int port = 8080) : GServer<gbase::net::GEventHandlingMode::ASYNC>::GServer(port) {};
+        GAsyncServer(int port = 8080) : GServer(port) {};
         ~GAsyncServer() = default;
 
         GAsyncServer(GAsyncServer const &) = delete;
@@ -90,14 +89,14 @@ namespace gbase::net
 
         void start();
 
-        virtual void send(const G_SOCKFD &client, const std::string &data);
+        virtual void send(const G_SOCKETFD &client, const ByteBuffer<std::byte> &data);
     };
 
-    template <gbase::net::GEventHandlingMode = gbase::net::GEventHandlingMode::SYNC>
-    class GSyncServer : public GServer<gbase::net::GEventHandlingMode::SYNC>
+    template <GEventHandlingMode = SYNC>
+    class GSyncServer : public GServer<SYNC>
     {
     public:
-        GSyncServer(int port = 8080) : GServer<gbase::net::GEventHandlingMode::SYNC>::GServer(port) {};
+        GSyncServer(int port = 8080) : GServer(port) {};
         ~GSyncServer() = default;
 
         GSyncServer(GSyncServer const &) = delete;

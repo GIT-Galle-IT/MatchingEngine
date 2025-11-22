@@ -1,17 +1,18 @@
 #include <GServer.h>
+#include <logging/gLog.h>
 
 using namespace gbase::net::l1;
 using namespace gbase::net;
 template<>
-void gbase::net::GSyncServer<>::start()
+void GSyncServer<>::start()
 {
     GLOG_DEBUG_L1("Sync Server loop started");
     while (true)
     {
         FD_ZERO(&writefds);
         FD_ZERO(&readfds);
-        FD_SET(m_serverSocket.getSocketfd(), &readfds);
-        int maxfd = m_serverSocket.getSocketfd();
+        FD_SET(m_serverSocket.getSocketFileDescriptor(), &readfds);
+        int maxfd = m_serverSocket.getSocketFileDescriptor();
         for (auto client_fd : m_clientSockets)
         {
             FD_SET(client_fd, &readfds);
@@ -27,10 +28,10 @@ void gbase::net::GSyncServer<>::start()
         rv = select(maxfd + 1, &readfds, &writefds, NULL, &tv);
         if (rv != -1)
         {
-            if (FD_ISSET(m_serverSocket.getSocketfd(), &readfds))
+            if (FD_ISSET(m_serverSocket.getSocketFileDescriptor(), &readfds))
             {
                 GLOG_DEBUG_L1("Client Connected")
-                G_SOCKFD client = m_serverSocket.accept();
+                G_SOCKETFD client = m_serverSocket.accept();
                 m_clientSockets.push_back(client);
                 continue;
             }
@@ -41,21 +42,17 @@ void gbase::net::GSyncServer<>::start()
                 ++index;
                 if (FD_ISSET(client_fd, &readfds) == true)
                 {
-                    std::string request {m_serverSocket.receiveData(client_fd)};
-                    std::string response;
+                    std::shared_ptr<ByteBuffer<std::byte>> p_byteBuffer {m_serverSocket.receiveData(client_fd)};
                     GLOG_DEBUG_L1("read from client {}", client_fd);
-                    if (request.size() == 0)
+                    print_byte_array(*p_byteBuffer.get());
+                    if (p_byteBuffer.get()->get_filled_size() == 0)
                     {
                         GLOG_DEBUG_L1("client {} closed connection", client_fd);
                         m_serverSocket.closeSocket(client_fd);
                         m_clientSockets.erase(m_clientSockets.begin() + index - 1);
                         continue;
                     }
-                    onMessage(request, response);
-                    if (response.empty() == false)
-                    {
-                        m_serverSocket.sendData(client_fd, response);
-                    }
+                    // m_serverSocket.sendData(client_fd, response_byteBuffer); TODO
                 }
             }
         }
@@ -63,7 +60,7 @@ void gbase::net::GSyncServer<>::start()
 }
 
 template<>
-void gbase::net::GAsyncServer<>::start()
+void GAsyncServer<>::start()
 {
     int maxfd = 0;
     eventfd_t holdingEvent = 0;
@@ -72,10 +69,10 @@ void gbase::net::GAsyncServer<>::start()
     {
         FD_ZERO(&writefds);
         FD_ZERO(&readfds);
-        FD_SET(m_serverSocket.getSocketfd(), &readfds);
+        FD_SET(m_serverSocket.getSocketFileDescriptor(), &readfds);
         FD_SET(eventNotifyingFileDiscriptor, &readfds);
         maxfd = eventNotifyingFileDiscriptor;
-        for (auto client_fd : m_clientSockets)
+        for (const auto& client_fd : m_clientSockets)
         {
             FD_SET(client_fd, &readfds);
             FD_SET(client_fd, &writefds);
@@ -90,10 +87,10 @@ void gbase::net::GAsyncServer<>::start()
         rv = select(maxfd + 1, &readfds, holdingEvent == Event::MESSAGE_BUFFERRED ? &writefds : NULL, NULL, &tv);
         if (rv != -1)
         {
-            if (FD_ISSET(m_serverSocket.getSocketfd(), &readfds))
+            if (FD_ISSET(m_serverSocket.getSocketFileDescriptor(), &readfds))
             {
-                GLOG_DEBUG_L1("Client Connected")
-                G_SOCKFD client = m_serverSocket.accept();
+                GLOG_DEBUG_L1("Client Connected");
+                G_SOCKETFD client = m_serverSocket.accept();
                 m_clientSockets.push_back(client);
                 continue;
             }
@@ -112,10 +109,9 @@ void gbase::net::GAsyncServer<>::start()
                 ++index;
                 if (FD_ISSET(client_fd, &readfds) == true)
                 {
-                    std::string request {m_serverSocket.receiveData(client_fd)};
-                    std::string response;
+                    std::shared_ptr<ByteBuffer<std::byte>> p_byteBuffer {m_serverSocket.receiveData()};
                     GLOG_DEBUG_L1("read from client {}", client_fd);
-                    if (request.size() == 0)
+                    if (p_byteBuffer.get()->get_filled_size() == 0)
                     {
                         GLOG_DEBUG_L1("client {} closed connection", client_fd);
                         m_serverSocket.closeSocket(client_fd);
@@ -123,9 +119,7 @@ void gbase::net::GAsyncServer<>::start()
                         continue;
                     }
                     GLOG_DEBUG_L1("queuing message to client {}", client_fd);
-                    GLOG_DEBUG_L1("request: {}", request);
-                    incomingMsgBuffer[client_fd].push(request);
-
+                    incomingMsgBuffer[client_fd].push(*p_byteBuffer.get());
 #ifdef DEBUG
                     std::string response = "[ACK] response from server " + std::to_string(client_fd);
                     // m_serverSocket.sendData(client_fd, response);
@@ -139,9 +133,8 @@ void gbase::net::GAsyncServer<>::start()
                     auto it = outgoingMsgBuffer.find(client_fd); // replace with lock free queue
                     if (it == outgoingMsgBuffer.end() || it->second.empty() == true)
                         continue;
-                    auto data = it->second.front();
-                    if (data.empty() == false)
-                        m_serverSocket.sendData(client_fd, data);
+                    const auto& byte_buffer = it->second.front();
+                    GSocket::sendData(client_fd, byte_buffer);
                     it->second.pop();
                 }
             }
@@ -151,19 +144,18 @@ void gbase::net::GAsyncServer<>::start()
 }
 
 template<>
-void gbase::net::GAsyncServer<>::send(const G_SOCKFD &client, const std::string &data)
+void GAsyncServer<>::send(const G_SOCKETFD &client, const ByteBuffer<std::byte> &data)
 {
     // Cache the iterator to avoid repeated lookups
-    auto it = outgoingMsgBuffer.find(client); // replace with lock free queue
-    if (it != outgoingMsgBuffer.end())
+    if (const auto it = outgoingMsgBuffer.find(client); it != outgoingMsgBuffer.end())
     {
         it->second.push(data);
     }
     else
     {
-        std::queue<std::string> messageQueue{};
-        messageQueue.emplace(data);
-        auto result = outgoingMsgBuffer.emplace(client, std::move(messageQueue));
+        std::queue<ByteBuffer<std::byte>> messageQueue{};
+        messageQueue.push(data);
+        outgoingMsgBuffer.emplace(client, std::move(messageQueue));
     }
-    eventfd_write(eventNotifyingFileDiscriptor, static_cast<int>(Event::MESSAGE_BUFFERRED));
+    eventfd_write(eventNotifyingFileDiscriptor, MESSAGE_BUFFERRED);
 }
