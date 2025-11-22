@@ -6,7 +6,7 @@
 #define GLOG_ERROR(formatted_log, ...) // dull define
 #else
 #include <string>
-
+#include <cstring>
 constexpr const char *getFileName() {
     return (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__);
 }

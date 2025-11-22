@@ -1,4 +1,5 @@
 #include <GServer.h>
+#include <logging/gLog.h>
 
 using namespace gbase::net::l1;
 using namespace gbase::net;
@@ -41,21 +42,17 @@ void GSyncServer<>::start()
                 ++index;
                 if (FD_ISSET(client_fd, &readfds) == true)
                 {
-                    std::string request {m_serverSocket.receiveData(client_fd)};
-                    std::string response;
+                    std::shared_ptr<ByteBuffer<std::byte>> p_byteBuffer {m_serverSocket.receiveData(client_fd)};
                     GLOG_DEBUG_L1("read from client {}", client_fd);
-                    if (request.empty())
+                    print_byte_array(*p_byteBuffer.get());
+                    if (p_byteBuffer.get()->get_filled_size() == 0)
                     {
                         GLOG_DEBUG_L1("client {} closed connection", client_fd);
                         m_serverSocket.closeSocket(client_fd);
                         m_clientSockets.erase(m_clientSockets.begin() + index - 1);
                         continue;
                     }
-                    onMessage(request, response);
-                    if (response.empty() == false)
-                    {
-                        m_serverSocket.sendData(client_fd, response);
-                    }
+                    // m_serverSocket.sendData(client_fd, response_byteBuffer); TODO
                 }
             }
         }
@@ -92,7 +89,7 @@ void GAsyncServer<>::start()
         {
             if (FD_ISSET(m_serverSocket.getSocketFileDescriptor(), &readfds))
             {
-                GLOG_DEBUG_L1("Client Connected")
+                GLOG_DEBUG_L1("Client Connected");
                 G_SOCKETFD client = m_serverSocket.accept();
                 m_clientSockets.push_back(client);
                 continue;
@@ -112,10 +109,9 @@ void GAsyncServer<>::start()
                 ++index;
                 if (FD_ISSET(client_fd, &readfds) == true)
                 {
-                    ByteBuffer<std::byte> bb;
-                    bb.get().reset(m_serverSocket.receiveData());
+                    std::shared_ptr<ByteBuffer<std::byte>> p_byteBuffer {m_serverSocket.receiveData()};
                     GLOG_DEBUG_L1("read from client {}", client_fd);
-                    if (request.empty())
+                    if (p_byteBuffer.get()->get_filled_size() == 0)
                     {
                         GLOG_DEBUG_L1("client {} closed connection", client_fd);
                         m_serverSocket.closeSocket(client_fd);
@@ -123,7 +119,7 @@ void GAsyncServer<>::start()
                         continue;
                     }
                     GLOG_DEBUG_L1("queuing message to client {}", client_fd);
-                    incomingMsgBuffer[client_fd].push(request);
+                    incomingMsgBuffer[client_fd].push(*p_byteBuffer.get());
 #ifdef DEBUG
                     std::string response = "[ACK] response from server " + std::to_string(client_fd);
                     // m_serverSocket.sendData(client_fd, response);

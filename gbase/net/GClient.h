@@ -8,12 +8,13 @@
 #include <type_traits>
 #include <memory>
 #include <boost/lockfree/queue.hpp>
+#include <ByteBuffer.hpp>
 
 namespace gbase::net
 {
     using namespace gbase::net::l1;
     template <GEventHandlingMode E, typename T>
-        requires std::is_base_of_v<std::stringstream, T>
+        requires std::is_base_of_v<ByteBuffer<std::byte>, T>
     class GClient
     {
 
@@ -29,7 +30,7 @@ namespace gbase::net
         GClient operator=(GClient &) = delete;  // no copy assignment
         GClient operator=(GClient &&) = delete; // no move assignment
 
-        inline gbase::net::GEventHandlingMode getMode() const noexcept
+        [[nodiscard]] static GEventHandlingMode getMode() noexcept
         {
             return m_serverMode;
         }
@@ -74,12 +75,13 @@ namespace gbase::net
     };
 
     template <typename T>
-        requires std::is_base_of_v<std::stringstream, T>
+        requires std::is_base_of_v<ByteBuffer<std::byte>, T>
     class GSyncClient : public GClient<GEventHandlingMode::SYNC, T>
     {
     public:
         GSyncClient() : GClient<GEventHandlingMode::SYNC, T>() {};
-        virtual ~GSyncClient() = default;
+
+        ~GSyncClient() override = default;
 
         GSyncClient(GSyncClient const &) = delete;      // no copy
         GSyncClient(GSyncClient &&) = delete;           // no move
@@ -87,31 +89,30 @@ namespace gbase::net
         GSyncClient operator=(GSyncClient &&) = delete; // no move assignment
 
     protected:
-        virtual void onResponse(std::string &&message) = 0;
+        void onResponse(std::string &&message) override = 0;
 
         void send(T &ss) noexcept override
         {
-            this->clientSocket.sendData(ss.str());
-            onResponse(this->clientSocket.receiveData());
+            this->clientSocket.sendData(ss);
+            // onResponse(this->clientSocket.receiveData());
         };
 
         void send(const T &ss) noexcept override
         {
-            this->clientSocket.sendData(ss.str());
-            onResponse(this->clientSocket.receiveData());
+            this->clientSocket.sendData(ss);
+            // onResponse(this->clientSocket.receiveData());
         };
 
         void send(T &&ss) noexcept override
         {
-            this->clientSocket.sendData(std::move(ss.str()));
-            onResponse(this->clientSocket.receiveData());
-            ss.clear();
+            this->clientSocket.sendData(std::move(ss));
+            // onResponse(this->clientSocket.receiveData());
+            // ss.clear();
         };
-        ;
     };
 
     template <typename T>
-        requires std::is_base_of_v<std::stringstream, T>
+        requires std::is_base_of_v<ByteBuffer<std::byte>, T>
     class GAsyncClient : public GClient<GEventHandlingMode::ASYNC, T>
     {
     public:
@@ -162,27 +163,27 @@ namespace gbase::net
                             this->clientSocket.closeSelf();
                             break;
                         }
-                        incomingMsgQueue.push(request);
+                        // incomingMsgQueue.push(request);
                     }
 
                     if (FD_ISSET(this->clientSocket.getSocketfd(), &writefds) == true &&
                         Event::MESSAGE_BUFFERRED == static_cast<Event>(holdingEvent))
                     {
                         GLOG_DEBUG_L1("Data available to write...");
-                        if (outgoingMsgQueue.empty())
-                        {
-                            holdingEvent = static_cast<eventfd_t>(Event::NONE);
-                            continue;
-                        }
-                        const char *data = nullptr;
-                        auto hurray = outgoingMsgQueue.pop(data);
-                        if (hurray)
-                        {
-                            printf("%p\n", data);
-                            GLOG_DEBUG_L1("sending data... {}", *data);
-                            printf("%s\n", data);
-                            this->clientSocket.sendData(data);
-                        }
+                        // if (outgoingMsgQueue.empty())
+                        // {
+                        //     holdingEvent = static_cast<eventfd_t>(Event::NONE);
+                        //     continue;
+                        // }
+                        // const char *data = nullptr;
+                        // auto hurray = outgoingMsgQueue.pop(data);
+                        // if (hurray)
+                        // {
+                        //     printf("%p\n", data);
+                        //     GLOG_DEBUG_L1("sending data... {}", *data);
+                        //     printf("%s\n", data);
+                        //     this->clientSocket.sendData(data);
+                        // }
                     }
                 }
             }
@@ -200,37 +201,41 @@ namespace gbase::net
     protected:
         void onResponse([[maybe_unused]] std::string &&message) override {};
 
-        void send(T &ss) noexcept override
+        void send(T &bb) noexcept override
         {
-            GLOG_DEBUG_L1("Queueing message to send... {}", ss.str());
-            std::string str = ss.str(); // make a copy to ensure data validity
-            outgoingMsgQueue.push(str.c_str());
+            // GLOG_DEBUG_L1("Queueing message to send... {}", ss.str());
+            this->clientSocket.sendData(bb);
+            // std::string str = ss.str(); // make a copy to ensure data validity
+            // outgoingMsgQueue.push(str.c_str());
         };
 
-        void send(const T &ss) noexcept override
+        void send(const T &bb) noexcept override
         {
-            GLOG_DEBUG_L1("Queueing message to send... {}", ss.str());
+            // GLOG_DEBUG_L1("Queueing message to send... {}", ss.str());
 
-            std::string str = ss.str(); // make a copy to ensure data validity
-            outgoingMsgQueue.push(str.c_str());
+            this->clientSocket.sendData(bb);
+
+            // std::string str = ss.str(); // make a copy to ensure data validity
+            // outgoingMsgQueue.push(str.c_str());
         };
 
-        void send(T &&ss) noexcept override
+        void send(T &&bb) noexcept override
         {
-            std::string str{ss.str()};
-            GLOG_DEBUG_L1("Queueing message to send temp - {}", str);
-            printf("%p\n", str.c_str());
-            char* msg = new char[str.size() + 1];
-            strncpy(msg, str.c_str(), str.size());
-            msg[str.size()] = '\0';
-            printf("%s\n", *msg);
-            outgoingMsgQueue.push(msg);
-            ss.clear();
+            // std::string str{ss.str()};
+            // GLOG_DEBUG_L1("Queueing message to send temp - {}", str);
+            this->clientSocket.sendData(bb);
+            // printf("%p\n", str.c_str());
+            // char* msg = new char[str.size() + 1];
+            // strncpy(msg, str.c_str(), str.size());
+            // msg[str.size()] = '\0';
+            // printf("%s\n", *msg);
+            // outgoingMsgQueue.push(msg);
+            // ss.clear();
         };
 
     private:
-        boost::lockfree::queue<const char *> incomingMsgQueue{1024};
-        boost::lockfree::queue<const char *> outgoingMsgQueue{1024};
+        // boost::lockfree::queue<gbase::ByteBuffer<std::byte>> incomingMsgQueue{1024};
+        // boost::lockfree::queue<gbase::ByteBuffer<std::byte>> outgoingMsgQueue{1024};
 
         fd_set readfds;
         fd_set writefds;

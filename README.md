@@ -63,3 +63,7 @@ Commits should follow the naming convention:
 Add[Auth] - Implement user login feature
 Update[DB] - Optimize query performance
 ```
+
+### ideas
+- use byte buffer as network level
+- continue next on - if gsocket has shard ptr of rcv buffer and we return it. then rcving party also get shrd ptr. if gsocket get more dta and rcv buf get fill then it is ub. if we make it unique the each time calls new when new data arrives. should we implement pool?

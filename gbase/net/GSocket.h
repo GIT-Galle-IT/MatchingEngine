@@ -7,7 +7,7 @@
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
 #include <sstream>
-#include "ByteBuffer.hpp"
+#include <ByteBuffer.hpp>
 
 
 namespace gbase::net::l1
@@ -94,6 +94,7 @@ namespace gbase::net::l1
         // TODO: ERROR HANDLING
         [[nodiscard]] auto receiveData(const G_SOCKETFD client_socket_file_descriptor) -> std::shared_ptr<ByteBuffer<std::byte>>
         {
+            receive_buffer->release();
             std::byte buffer[2048];
             const std::stringstream ss;
             int flag;

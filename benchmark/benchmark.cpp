@@ -15,12 +15,12 @@ static void BM_WithoutObjPooling(benchmark::State &state)
   message.serialize(oss);
   const char *some_string = oss.str().c_str();
 
-  ByteBuffer<int> bb;
+  gbase::ByteBuffer<int> bb;
 
   for (auto _ : state)
   {
-    bb.allocate_new(some_string, oss.str().size());
-    bb.release();
+    // bb.allocate_new(some_string, oss.str().size());
+    // bb.release();
   }
 }
 
@@ -33,12 +33,12 @@ static void BM_WithObjPooling_singleton_pool(benchmark::State &state)
   message.serialize(oss);
   const char *some_string = oss.str().c_str();
 
-  ByteBuffer<int> bb;
+  gbase::ByteBuffer<int> bb;
 
   for (auto _ : state)
   {
-    bb.allocate_singleton_pool(some_string, oss.str().size());
-    bb.release_singleton_pool();
+    // bb.allocate_singleton_pool(some_string, oss.str().size());
+    // bb.release_singleton_pool();
   }
 }
 
