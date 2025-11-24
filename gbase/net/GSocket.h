@@ -9,7 +9,6 @@
 #include <sstream>
 #include <ByteBuffer.hpp>
 
-
 namespace gbase::net::l1
 {
     using G_SOCKETFD = int;
@@ -23,7 +22,8 @@ namespace gbase::net::l1
         std::shared_ptr<ByteBuffer<std::byte>> receive_buffer;
 
     public:
-        GSocket() : socket_fd(-1) {
+        GSocket() : socket_fd(-1)
+        {
             send_buffer = std::make_shared<ByteBuffer<std::byte>>();
             receive_buffer = std::make_shared<ByteBuffer<std::byte>>();
         }
@@ -50,7 +50,8 @@ namespace gbase::net::l1
             return ::bind(socket_fd, reinterpret_cast<sockaddr *>(&address), sizeof(address)) == 0;
         }
 
-        [[nodiscard]] bool listen(int backlog = 5) const {
+        [[nodiscard]] bool listen(int backlog = 5) const
+        {
             GLOG_DEBUG_L1("now listening...");
             return ::listen(socket_fd, backlog) == 0;
         }
@@ -82,11 +83,13 @@ namespace gbase::net::l1
             sendData(socket_fd, data);
         }
 
-        static void sendData(const G_SOCKETFD receiving_party_socket_file_descriptor, const ByteBuffer<std::byte> &data) {
+        static void sendData(const G_SOCKETFD receiving_party_socket_file_descriptor, const ByteBuffer<std::byte> &data)
+        {
             sendData(receiving_party_socket_file_descriptor, std::move(data));
         }
 
-        static void sendData(const G_SOCKETFD receiving_party_socket_file_descriptor, const ByteBuffer<std::byte> &&data) {
+        static void sendData(const G_SOCKETFD receiving_party_socket_file_descriptor, const ByteBuffer<std::byte> &&data)
+        {
             auto n = ::send(receiving_party_socket_file_descriptor, data.get().get(), data.get_filled_size(), 0);
             GLOG_DEBUG_L1("sent {} bytes", n);
         }
@@ -118,7 +121,7 @@ namespace gbase::net::l1
 
         [[nodiscard]] std::shared_ptr<ByteBuffer<std::byte>> receiveData()
         {
-            return receiveData(socket_fd);
+            return receiveData(socket_fd);+
         }
 
         static void closeSocket(const G_SOCKETFD closingSocketFD) noexcept
