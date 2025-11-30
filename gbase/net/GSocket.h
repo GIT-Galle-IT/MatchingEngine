@@ -121,7 +121,7 @@ namespace gbase::net::l1
 
         [[nodiscard]] std::shared_ptr<ByteBuffer<std::byte>> receiveData()
         {
-            return receiveData(socket_fd);+
+            return receiveData(socket_fd);
         }
 
         static void closeSocket(const G_SOCKETFD closingSocketFD) noexcept
