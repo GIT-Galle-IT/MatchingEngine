@@ -42,7 +42,7 @@ void GSyncServer<>::start()
                 ++index;
                 if (FD_ISSET(client_fd, &readfds) == true)
                 {
-                    std::shared_ptr<ByteBuffer<std::byte>> p_byteBuffer {m_serverSocket.receiveData(client_fd)};
+                    std::shared_ptr<ByteBuffer<std::byte>> p_byteBuffer {m_serverSocket.receive(client_fd)};
                     GLOG_DEBUG_L1("read from client {}", client_fd);
                     print_byte_array(*p_byteBuffer.get());
                     if (p_byteBuffer.get()->get_filled_size() == 0)
@@ -52,7 +52,19 @@ void GSyncServer<>::start()
                         m_clientSockets.erase(m_clientSockets.begin() + index - 1);
                         continue;
                     }
-                    // m_serverSocket.sendData(client_fd, response_byteBuffer); TODO
+                    // protocol::state state{server::protocol::applyOnReceive(client_fd, p_byteBuffer.get())}
+                    // switch (state) {
+                    //      case protocol::state::APPLICATION_DATA_COMPLETE:
+                    //          ByteBuffer<std::byte> send_bytes{server::protocol::applyOnSend(client_fd, application::handle(data))}
+                    //          m_serverSocket.send(client_fd, send_bytes);
+                    //          break;
+                    //      case protocol::state::APPLICATION_DATA_WAITING:
+                    //      case protocol::state::ACK_WAITING:
+                    //          break;
+                    //          
+                    // }
+                    // 
+                    // this way protocol is IPC method agnostic
                 }
             }
         }
@@ -109,7 +121,7 @@ void GAsyncServer<>::start()
                 ++index;
                 if (FD_ISSET(client_fd, &readfds) == true)
                 {
-                    std::shared_ptr<ByteBuffer<std::byte>> p_byteBuffer {m_serverSocket.receiveData()};
+                    std::shared_ptr<ByteBuffer<std::byte>> p_byteBuffer {m_serverSocket.receive()};
                     GLOG_DEBUG_L1("read from client {}", client_fd);
                     if (p_byteBuffer.get()->get_filled_size() == 0)
                     {
@@ -134,7 +146,7 @@ void GAsyncServer<>::start()
                     if (it == outgoingMsgBuffer.end() || it->second.empty() == true)
                         continue;
                     const auto& byte_buffer = it->second.front();
-                    GSocket::sendData(client_fd, byte_buffer);
+                    GSocket::send(client_fd, byte_buffer);
                     it->second.pop();
                 }
             }
