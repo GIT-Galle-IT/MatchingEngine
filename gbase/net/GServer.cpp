@@ -52,6 +52,14 @@ void GSyncServer<>::start()
                         m_clientSockets.erase(m_clientSockets.begin() + index - 1);
                         continue;
                     }
+                    // ByteBuffer<std::byte> send_bytes{server::protocol::applyOnReceive(client_fd, p_byteBuffer.get())}
+                    // if (send_bytes.not_empty())
+                    //      to_send.push(send_bytes); 
+                    // this way protocol is IPC method agnostic
+                }
+
+                if (FD_ISSET(client_fd, &writefds) == true)
+                {
                     // protocol::state state{server::protocol::applyOnReceive(client_fd, p_byteBuffer.get())}
                     // switch (state) {
                     //      case protocol::state::APPLICATION_DATA_COMPLETE:

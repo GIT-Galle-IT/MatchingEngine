@@ -82,6 +82,8 @@ namespace gbase::net::gProtocol::v1
     static constexpr uint8_t START_DATA_TRANSMISSION_ACK = static_cast<uint8_t>(0x6);
     static constexpr uint8_t END_DATA_TRANSMISSION = static_cast<uint8_t>(0x7);
     static constexpr uint8_t END_DATA_TRANSMISSION_ACK = static_cast<uint8_t>(0x8);
+    static constexpr uint8_t DATA_ARRIVAL = static_cast<uint8_t>(0x9);
+    static constexpr uint8_t DATA_RECEIVED_BY_CLIENT = static_cast<uint8_t>(0x10);
 
     uint16_t __header_and_proto_version__ = 0x0;
     uint16_t __size_of_data__ = 0x0;
@@ -197,12 +199,23 @@ namespace gbase::net::gProtocol::v1
     {
         enum State : int
         {
-            APPLICATION_DATA_COMPLETE,
-            APPLICATION_DATA_WAITING,
-            START_DATA_TRANSMISSION_ACK_WAITING,
-            START_DATA_TRANSMISSION_ACK_RECEIVED,
-            END_DATA_TRANSMISSION_ACK_WAITING,
-            END_DATA_TRANSMISSION_ACK_RECEIVED
+            APPLICATION_DATA_TRANSMISSION_COMPLETED,
+            APPLICATION_DATA_TRANSMITTING,
+            APPLICATION_DATA_RECEIVING,
+            APPLICATION_DATA_RECEPTION_COMPLETED,
+            START_APPLICATION_DATA_TRANSMISSION_ACK_WAITING,
+            START_APPLICATION_DATA_TRANSMISSION_ACK_RECEIVED,
+            END_APPLICATION_DATA_TRANSMISSION_ACK_WAITING,
+            END_APPLICATION_DATA_TRANSMISSION_ACK_RECEIVED,
+            
+            CONNECTED,
+            IDLE
+        };
+
+        enum TrasnmittingDataType : int
+        {
+            APPLICATION_DATA,
+            PROTOCOL_DATA
         };
 
         template <class IPCMethod>
@@ -210,44 +223,111 @@ namespace gbase::net::gProtocol::v1
         {
 
         private:
+            struct
+            {
+                TrasnmittingDataType _data_type_;
+                gbase::ByteBuffer<std::byte> _data_;
+            } DataWithMetaData;
+
             using ClientId = int;
+            using ListOfData = std::queue<DataWithMetaData>;
+
             std::flat_map<ClientId, State> __client_states;
-            std::flat_map<ClientId, gbase::ByteBuffer<std::byte>> __data_waiting_to_sent;
+            std::flat_map<ClientId, ListOfData> __data_waiting_to_sent;
+            std::flat_map<ClientId, ListOfData> __data_waiting_to_receive;
 
         public:
             Protocol() = default;
             ~Protocol() = default;
 
-            auto applyOnSend(ClientId client_id, gbase::ByteBuffer<std::byte> &data) -> gbase::ByteBuffer<std::byte>
+            void onClientConnect(ClientId client_id)
             {
+                __client_states.emplace(client_id, State::CONNECTED);
+            }
+
+            [[nodiscard]] auto applyOnSend(ClientId client_id, gbase::ByteBuffer<std::byte> &data) -> gbase::ByteBuffer<std::byte>
+            {
+                if (data.get_filled_size() > 0)
+                {
+                    // application has data to sent
+                    __size_of_data__ = data.get_filled_size(); // fix warning
+                    __header_and_proto_version |= (uint16_t)START_DATA_TRANSMISSION << 8 | __G_PROTOCOL_MAJOR_VERSION__;
+
+                    gbase::ByteBuffer<std::byte> war_head;
+
+                    // send sot
+                    war_head.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
+                    war_head.append(reinterpret_cast<const char *>(&__size_of_data__), sizeof(uint16_t));
+
+                    if (auto &q = __data_waiting_to_sent.find(client_id); q != __data_waiting_to_sent.end())
+                    {
+                        q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(war_head)});
+                        q.push({TrasnmittingDataType::APPLICATION_DATA, std::move(data)});
+                    }
+                    else
+                    {
+                        ListOfDataToBeSent q;
+                        q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(war_head)});
+                        q.push({TrasnmittingDataType::APPLICATION_DATA, std::move(data)});
+                        __data_waiting_to_sent.emplace(client_id, q);
+                    }
+                }
+
+                gbase::ByteBuffer<std::byte> ret_data;
                 if (auto client_state = __client_states.find(client_id); client_state != __client_states.end())
                 {
                     switch (client_state)
                     {
-                    case State::APPLICATION_DATA_COMPLETE:
-                        /* code */
-                        break;
-                    case State::APPLICATION_DATA_WAITING:
-                        /* code */
-                        break;
-                    case State::START_DATA_TRANSMISSION_ACK_WAITING:
-                        /* code */
-                        break;
-                    case State::START_DATA_TRANSMISSION_ACK_RECEIVED:
-                        __client_states.emplace(client_id, State::START_DATA_TRANSMISSION_ACK_RECEIVED);
-                        if (auto client_state = __client_states.find(client_id); client_state != __client_states.end())
+                    case State::CONNECTED:
+                    case State::IDLE:
+                        if (auto &q = __data_waiting_to_sent.find(client_id); q != __data_waiting_to_sent.end())
                         {
-                            if (client_state == State::START_DATA_TRANSMISSION_ACK_WAITING)
+                            if (q.front()._data_type_ == TrasnmittingDataType::PROTOCOL_DATA)
                             {
-                                __client_states.emplace(client_id, State::START_DATA_TRANSMISSION_ACK_RECEIVED);
+                                ret_data = q.front();
+                                q.pop();
+
+                                uint16_t proto_header_and_version_to_send = 0x0;
+                                data.read<uint16_t>(reinterpret_cast<char *>(&proto_header_and_version_to_send));
+
+                                uint8_t proto_header_to_send = proto_header >> 8;
+
+                                if (proto_header_to_send & START_DATA_TRANSMISSION)
+                                    __client_states.emplace(client_id, State::START_APPLICATION_DATA_TRANSMISSION_ACK_WAITING);
+                                if (proto_header_to_send & END_DATA_TRANSMISSION)
+                                    __client_states.emplace(client_id, State::END_APPLICATION_DATA_TRANSMISSION_ACK_WAITING);
+                                if (proto_header_to_send & START_DATA_TRANSMISSION_ACK)
+                                    __client_states.emplace(client_id, State::APPLICATION_DATA_TRANSMITTING);
+                                if (proto_header_to_send & END_DATA_TRANSMISSION_ACK)
+                                    __client_states.emplace(client_id, State::IDLE);
+
+                                // else - sending acks
                             }
                         }
                         break;
-                    case State::END_DATA_TRANSMISSION_ACK_WAITING:
-                        /* code */
+                    case State::START_APPLICATION_DATA_TRANSMISSION_ACK_RECEIVED:
+                        if (auto &q = __data_waiting_to_sent.find(client_id); q != __data_waiting_to_sent.end())
+                        {
+                            if (q.front()._data_type_ == TrasnmittingDataType::APPLICATION_DATA)
+                            {
+                                ret_data = q.front();
+                                q.pop();
+
+                                __client_states.emplace(client_id, State::APPLICATION_DATA_TRANSMITTING);
+                            }
+                        }
                         break;
-                    case State::END_DATA_TRANSMISSION_ACK_RECEIVED:
-                        /* code */
+                    case State::APPLICATION_DATA_TRANSMISSION_COMPLETED:
+                        __client_states.emplace(client_id, State::END_APPLICATION_DATA_TRANSMISSION_ACK_WAITING);
+                        __header_and_proto_version |= (uint16_t)END_DATA_TRANSMISSION << 8 | __G_PROTOCOL_MAJOR_VERSION__;
+                        ret_data.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
+                        break;
+                    case State::END_APPLICATION_DATA_TRANSMISSION_ACK_RECEIVED:
+                        __client_states.emplace(client_id, State::IDLE);
+                        break;
+                    case State::END_APPLICATION_DATA_TRANSMISSION_ACK_WAITING:   // concurrency control
+                    case State::APPLICATION_DATA_TRANSMITTING:                   // concurrency control
+                    case State::START_APPLICATION_DATA_TRANSMISSION_ACK_WAITING: // concurrency control
                         break;
 
                     default:
@@ -256,87 +336,158 @@ namespace gbase::net::gProtocol::v1
                 }
                 else
                 {
-                    __size_of_data__ = data.get_filled_size(); // fix warning
-                    __header_and_proto_version |= (uint16_t)START_DATA_TRANSMISSION << 8 | __G_PROTOCOL_MAJOR_VERSION__;
-                    gbase::ByteBuffer<std::byte> bb;
+                    GLOG_ERROR("No client found for id {}", client_id)
+                }
+                __size_of_data__ = 0x0;
+                __header_and_proto_version = 0x0;
+                return ret_data;
+            };
+
+            void recieve(ClientId client_id, gbase::ByteBuffer<std::byte> &data)
+            {
+                gbase::ByteBuffer<std::byte> ret_date;
+                // WARNING : TODO make sure it is a header (handle)
+                data.read<uint16_t>(reinterpret_cast<char *>(&__header_and_proto_version));
+
+                uint8_t header = (uint8_t)(__header_and_proto_version >> 8);
+                switch (header)
+                {
+                // client side intiations
+                case START_SESSION: // client starts
+                    __header_and_proto_version |= (uint16_t)START_SESSION_ACK << 8 | __G_PROTOCOL_MAJOR_VERSION__;
+                    gbase::ByteBuffer<std::byte> ack;
 
                     // send sot
-                    bb.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
-                    bb.append(reinterpret_cast<const char *>(&__size_of_data__), sizeof(uint16_t));
-                    // bb.append(data.get().get(), data.get_filled_size());
+                    ack.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
+                    if (auto &q = __data_waiting_to_sent.find(client_id); q != __data_waiting_to_sent.end())
+                    {
+                        q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(ack)});
+                    }
+                    else
+                    {
+                        ListOfDataToBeSent q;
+                        q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(ack)});
+                        __data_waiting_to_sent.emplace(client_id, q);
+                    }
+                    break;
+                case START_DATA_TRANSMISSION: // client starts
+                    data.read<uint16_t>(reinterpret_cast<char *>(&__size_of_data__));
 
-                    __client_states.emplace(client_id, START_DATA_TRANSMISSION_ACK_WAITING);
-                    __data_waiting_to_sent.emplace(client_id, std::move(data));
-                    return bb;
-                }
-            }; // send to server
+                    if (auto &q = __data_waiting_to_receive.find(client_id); q == __data_waiting_to_receive.end())
+                    {
+                        ListOfDataToBeSent q;
+                        __data_waiting_to_receive.emplace(client_id, q);
+                    }
 
-            auto recieve(ClientId client_id, gbase::ByteBuffer<std::byte> &data) -> state
-            {
-                data.read<uint16_t>(reinterpret_cast<char *>(&__header_and_proto_version));
-                data.read<uint16_t>(reinterpret_cast<char *>(&__size_of_data__));
+                    __header_and_proto_version |= (uint16_t)START_DATA_TRANSMISSION_ACK << 8 | __G_PROTOCOL_MAJOR_VERSION__;
+                    gbase::ByteBuffer<std::byte> ack;
 
-                uint8_t ack_header = (uint8_t)(__header_and_proto_version >> 8);
+                    // send sot
+                    ack.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
+                    ack.append(reinterpret_cast<const char *>(&__size_of_data__), sizeof(uint16_t));
+                    if (auto &q = __data_waiting_to_sent.find(client_id); q != __data_waiting_to_sent.end())
+                    {
+                        q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(ack)});
+                    }
+                    else
+                    {
+                        ListOfDataToBeSent q;
+                        q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(ack)});
+                        __data_waiting_to_sent.emplace(client_id, q);
+                    }
+                    break;
+                case END_DATA_TRANSMISSION: // client ends
+                    if (auto &q = __data_waiting_to_receive.find(client_id); q != __data_waiting_to_receive.end())
+                    {
+                        ret_data = q.front();
+                        q.pop();
+                    }
+                    
+                    __header_and_proto_version |= (uint16_t)END_DATA_TRANSMISSION_ACK << 8 | __G_PROTOCOL_MAJOR_VERSION__;
+                    gbase::ByteBuffer<std::byte> ack;
 
-                switch (ack_header)
-                {
-                case START_SESSION:
-                    /* code */
+                    // send sot
+                    ack.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
+                    if (auto &q = __data_waiting_to_sent.find(client_id); q != __data_waiting_to_sent.end())
+                    {
+                        q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(ack)});
+                    }
+                    else
+                    {
+                        ListOfDataToBeSent q;
+                        q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(ack)});
+                        __data_waiting_to_sent.emplace(client_id, q);
+                    }
                     break;
-                case START_SESSION_ACK:
-                    /* code */
+                case END_SESSION: // client ends
+                    __header_and_proto_version |= (uint16_t)END_SESSION_ACK << 8 | __G_PROTOCOL_MAJOR_VERSION__;
+                    gbase::ByteBuffer<std::byte> ack;
+
+                    // send sot
+                    ack.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
+                    if (auto &q = __data_waiting_to_sent.find(client_id); q != __data_waiting_to_sent.end())
+                    {
+                        q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(ack)});
+                    }
+                    else
+                    {
+                        ListOfDataToBeSent q;
+                        q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(ack)});
+                        __data_waiting_to_sent.emplace(client_id, q);
+                    }
                     break;
-                case END_SESSION:
-                    /* code */
-                    break;
-                case END_SESSION_ACK:
-                    /* code */
-                    break;
-                case START_DATA_TRANSMISSION:
-                    /* code */
-                    break;
+
+                // // server side initiated actions acknowledgment handling
                 case START_DATA_TRANSMISSION_ACK:
                     if (auto client_state = __client_states.find(client_id); client_state != __client_states.end())
                     {
-                        if (client_state == State::START_DATA_TRANSMISSION_ACK_WAITING)
+                        if (client_state == State::START_APPLICATION_DATA_TRANSMISSION_ACK_WAITING)
                         {
-                            __client_states.emplace(client_id, State::START_DATA_TRANSMISSION_ACK_RECEIVED);
+                            __client_states.emplace(client_id, State::START_APPLICATION_DATA_TRANSMISSION_ACK_RECEIVED);
                         }
                     }
                     break;
-                case END_DATA_TRANSMISSION:
-                    /* code */
+                case DATA_ARRIVAL:
+                    if (auto client_state = __client_states.find(client_id); client_state != __client_states.end())
+                    {
+                        if (client_state == State::APPLICATION_DATA_RECEIVING)
+                        {
+                            if (auto &q = __data_waiting_to_receive.find(client_id); q != __data_waiting_to_receive.end())
+                            {
+                                data.read<uint16_t>(reinterpret_cast<char *>(&__size_of_data__));
+                                void* app_data = malloc(__size_of_data__);
+                                data.read<__size_of_data__>(reinterpret_cast<const char*>(&app_data))
+                                q.back().append(static_cast<const char*>(&app_data), __size_of_data__);
+                                __data_waiting_to_receive.emplace(client_id, q);
+                            }
+                            
+                            __client_states.emplace(client_id, State::APPLICATION_DATA_RECEPTION_COMPLETED);
+                        }
+                    }
+                    break;
+                case DATA_RECEIVED_BY_CLIENT:
+                    if (auto client_state = __client_states.find(client_id); client_state != __client_states.end())
+                    {
+                        if (client_state == State::APPLICATION_DATA_TRANSMITTING)
+                        {
+                            __client_states.emplace(client_id, State::APPLICATION_DATA_TRANSMISSION_COMPLETED);
+                        }
+                    }
                     break;
                 case END_DATA_TRANSMISSION_ACK:
-                    /* code */
+                    if (auto client_state = __client_states.find(client_id); client_state != __client_states.end())
+                    {
+                        if (client_state == State::END_APPLICATION_DATA_TRANSMISSION_ACK_WAITING)
+                        {
+                            __client_states.emplace(client_id, State::END_APPLICATION_DATA_TRANSMISSION_ACK_RECEIVED);
+                        }
+                    }
                     break;
 
                 default:
                     break;
                 }
-
-                // if (ack_header != START_DATA_TRANSMISSION || target_client_id != __client_id)
-                // {
-                //     GLOG_ERROR("Invalid ack received from server {}. unable to start data receiving transmission", ack_header);
-                //     return;
-                // }
-
-                // bb.release();
-
-                // __header_and_proto_version |= (uint16_t)START_DATA_TRANSMISSION_ACK << 8 | __G_PROTOCOL_MAJOR_VERSION__;
-
-                // bb.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
-                // bb.append(reinterpret_cast<const char *>(&__client_id), sizeof(uint16_t));
-                // __method.send(std::move(bb));
-
-                // bb.release();
-
-                // while (bb.get_filled_size() < __size_of_data__)
-                // {
-                //     bb = __method.receive();
-                // }
-
-                return std::move(bb);
+                return ret_data;
             };
         };
     } // namespace server
