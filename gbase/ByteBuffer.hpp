@@ -104,27 +104,31 @@ namespace gbase
             {
                 // resize
                 // TODO:check for int overflows
-                T *temp_byte_array = new (malloc(sizeof(T) * 2 * (buffer_size + size))) T;
-                T *underlying_byte_array = byte_array.get();
-                for (size_t i = 0; i < buffer_size; i++)
+                if (buffer_size < filled_size + size)
                 {
-                    temp_byte_array[i] = underlying_byte_array[i];
+                    T *temp_byte_array = new (malloc(sizeof(T) * 2 * (buffer_size + size))) T;
+                    T *underlying_byte_array = byte_array.get();
+                    for (size_t i = 0; i < filled_size; i++)
+                    {
+                        temp_byte_array[i] = underlying_byte_array[i];
+                    }
+                    byte_array.reset(std::move(temp_byte_array));
+                    buffer_size = 2 * (buffer_size + size);
                 }
-                byte_array.reset(std::move(temp_byte_array));
             }
             else
             {
                 // allocate
                 T *ptr = new (malloc(sizeof(T) * size)) T;
                 byte_array.reset(std::move(ptr));
+                buffer_size = size;
             }
             T *_ba = byte_array.get();
-            for (size_t i = buffer_size > 0 ? buffer_size : 0; i < buffer_size + size; i++)
+            for (size_t i = filled_size > 0 ? filled_size : 0; i < filled_size + size; i++)
             {
                 _ba[i] = static_cast<T>(*byteStream++);
             }
-            buffer_size += size;
-            filled_size = buffer_size;
+            filled_size += size;
         }
 
         void append(const T byteStream[], const size_t size)
@@ -133,27 +137,31 @@ namespace gbase
             {
                 // resize
                 // TODO:check for int overflows
-                T *temp_byte_array = new (malloc(sizeof(T) * 2 * (buffer_size + size))) T;
-                T *underlying_byte_array = byte_array.get();
-                for (size_t i = 0; i < buffer_size; i++)
+                if (buffer_size < filled_size + size)
                 {
-                    temp_byte_array[i] = underlying_byte_array[i];
+                    T *temp_byte_array = new (malloc(sizeof(T) * 2 * (buffer_size + size))) T;
+                    T *underlying_byte_array = byte_array.get();
+                    for (size_t i = 0; i < filled_size; i++)
+                    {
+                        temp_byte_array[i] = underlying_byte_array[i];
+                    }
+                    byte_array.reset(std::move(temp_byte_array));
+                    buffer_size = 2 * (buffer_size + size);
                 }
-                byte_array.reset(std::move(temp_byte_array));
             }
             else
             {
                 // allocate
                 T *ptr = new (malloc(sizeof(T) * size)) T;
                 byte_array.reset(std::move(ptr));
+                buffer_size = size;
             }
             T *_ba = byte_array.get();
-            for (size_t i = buffer_size > 0 ? buffer_size : 0; i < buffer_size + size; i++)
+            for (size_t i = filled_size > 0 ? filled_size : 0; i < filled_size + size; i++)
             {
                 _ba[i] = byteStream[i];
             }
-            buffer_size += size;
-            filled_size = buffer_size;
+            filled_size += size;
         }
 
         template <typename U>
