@@ -207,7 +207,7 @@ namespace gbase::net::gProtocol::v1
             START_APPLICATION_DATA_TRANSMISSION_ACK_RECEIVED,
             END_APPLICATION_DATA_TRANSMISSION_ACK_WAITING,
             END_APPLICATION_DATA_TRANSMISSION_ACK_RECEIVED,
-            
+
             CONNECTED,
             IDLE
         };
@@ -261,7 +261,7 @@ namespace gbase::net::gProtocol::v1
 
                     if (auto &q = __data_waiting_to_sent.find(client_id); q != __data_waiting_to_sent.end())
                     {
-                        q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(war_head)});
+                        q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(war__header_and_proto_version___head)});
                         q.push({TrasnmittingDataType::APPLICATION_DATA, std::move(data)});
                     }
                     else
@@ -310,7 +310,10 @@ namespace gbase::net::gProtocol::v1
                         {
                             if (q.front()._data_type_ == TrasnmittingDataType::APPLICATION_DATA)
                             {
-                                ret_data = q.front();
+                                __header_and_proto_version |= (uint16_t)DATA_ARRIVAL << 8 | __G_PROTOCOL_MAJOR_VERSION__;
+                                gbase::ByteBuffer<std::byte> data_with_hdr;
+                                ret_data.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
+                                ret_data.append(q.front().get(), q.front().get_filled_size());
                                 q.pop();
 
                                 __client_states.emplace(client_id, State::APPLICATION_DATA_TRANSMITTING);
@@ -402,7 +405,7 @@ namespace gbase::net::gProtocol::v1
                         ret_data = q.front();
                         q.pop();
                     }
-                    
+
                     __header_and_proto_version |= (uint16_t)END_DATA_TRANSMISSION_ACK << 8 | __G_PROTOCOL_MAJOR_VERSION__;
                     gbase::ByteBuffer<std::byte> ack;
 
@@ -455,12 +458,13 @@ namespace gbase::net::gProtocol::v1
                             if (auto &q = __data_waiting_to_receive.find(client_id); q != __data_waiting_to_receive.end())
                             {
                                 data.read<uint16_t>(reinterpret_cast<char *>(&__size_of_data__));
-                                void* app_data = malloc(__size_of_data__);
-                                data.read<__size_of_data__>(reinterpret_cast<const char*>(&app_data))
-                                q.back().append(static_cast<const char*>(&app_data), __size_of_data__);
+                                void *app_data = malloc(__size_of_data__);
+                                data.read<__size_of_data__>(reinterpret_cast<const char *>(&app_data));
+                                q.back().append(static_cast<const char *>(&app_data), __size_of_data__);
                                 __data_waiting_to_receive.emplace(client_id, q);
+                                free(app_data);
                             }
-                            
+
                             __client_states.emplace(client_id, State::APPLICATION_DATA_RECEPTION_COMPLETED);
                         }
                     }
@@ -487,6 +491,8 @@ namespace gbase::net::gProtocol::v1
                 default:
                     break;
                 }
+                __size_of_data__ = 0x0;
+                __header_and_proto_version__ = 0x0;
                 return ret_data;
             };
         };
