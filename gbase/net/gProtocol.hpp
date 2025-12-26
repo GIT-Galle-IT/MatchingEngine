@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <ByteBuffer.hpp>
 #include <flat_map> // C++23 header
+#include <queue>
 
 constexpr uint8_t __G_PROTOCOL_MAJOR_VERSION__ = 1;
 /*
@@ -88,113 +89,6 @@ namespace gbase::net::gProtocol::v1
     uint16_t __header_and_proto_version__ = 0x0;
     uint16_t __size_of_data__ = 0x0;
 
-    template <typename T, typename Ret>
-    concept ClientSideProtocolApplicable = requires(T t) {
-        { t.initialize() } -> std::same_as<Ret>;
-        { t.send() } -> std::same_as<Ret>;
-        { t.receive() } -> std::same_as<Ret>;
-    };
-
-    namespace client
-    {
-        template <ClientSideProtocolApplicable<void> IPCMethod>
-        class Protocol
-        {
-        public:
-            Protocol() = default;
-            ~Protocol() = default;
-
-            void initialize(IPCMethod &method)
-            {
-                this->__method = method;
-                __method.initilize();
-                // protocol negotiation
-                __header_and_proto_version |= (uint16_t)START_SESSION << 8 | __G_PROTOCOL_MAJOR_VERSION__;
-
-                gbase::ByteBuffer<std::byte> bb;
-
-                // sends start
-                bb.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
-                __method.send(std::move(bb));
-
-                // receive ack
-                bb = __method.receive();
-                bb.read<uint16_t>(reinterpret_cast<char *>(&__header_and_proto_version));
-                bb.read<uint16_t>(reinterpret_cast<char *>(&__size_of_data__));
-                bb.read<static_cast<size_t>(__size_of_data__)>(reinterpret_cast<char *>(&__client_id)); // keep size of data to 2 bytes for client id in ACK
-
-                uint8_t ack_header = (uint8_t)(__header_and_proto_version >> 8) & START_SESSION_ACK;
-                uint8_t server_proto_version = __header_and_proto_version << 8;
-
-                if (ack_header != START_SESSION_ACK)
-                {
-                    GLOG_ERROR("Invalid ack received from server {}", ack_header);
-                    return;
-                }
-
-                if (server_proto_version != __G_PROTOCOL_MAJOR_VERSION__)
-                {
-                    GLOG_ERROR("Invalid protocol version in server {} and yours {}", server_proto_version, __G_PROTOCOL_MAJOR_VERSION__);
-                    return;
-                }
-
-                __header_and_proto_version = 0x0;
-                __size_of_data__ = 0x0;
-            }
-
-            static gbase::ByteBuffer<std::byte> applyOnSend(gbase::ByteBuffer<std::byte> &data)
-            {
-                __size_of_data__ = data.get_filled_size(); // fix warning
-                __header_and_proto_version |= (uint16_t)START_DATA_TRANSMISSION << 8 | __G_PROTOCOL_MAJOR_VERSION__;
-
-                gbase::ByteBuffer<std::byte> bb;
-
-                // send sot
-                bb.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
-                bb.append(reinterpret_cast<const char *>(&__size_of_data__), sizeof(uint16_t));
-                bb.append(data.get().get(), data.get_filled_size());
-
-                return bb;
-            }; // send to server
-
-            static auto recieve() -> gbase::ByteBuffer<std::byte> &&
-            {
-                gbase::ByteBuffer<std::byte> bb;
-
-                bb = method.receive();
-                bb.read<uint16_t>(reinterpret_cast<char *>(&__header_and_proto_version));
-                bb.read<uint16_t>(reinterpret_cast<char *>(&__size_of_data__));
-                uint16_t target_client_id = 0x0;
-                bb.read<uint16_t>(reinterpret_cast<char *>(&target_client_id));
-
-                uint8_t ack_header = (uint8_t)(__header_and_proto_version >> 8) & START_DATA_TRANSMISSION;
-
-                if (ack_header != START_DATA_TRANSMISSION || target_client_id != __client_id)
-                {
-                    GLOG_ERROR("Invalid ack received from server {}. unable to start data receiving transmission", ack_header);
-                    return;
-                }
-
-                bb.release();
-
-                __header_and_proto_version |= (uint16_t)START_DATA_TRANSMISSION_ACK << 8 | __G_PROTOCOL_MAJOR_VERSION__;
-
-                bb.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
-                bb.append(reinterpret_cast<const char *>(&__client_id), sizeof(uint16_t));
-                __method.send(std::move(bb));
-
-                bb.release();
-
-                while (bb.get_filled_size() < __size_of_data__)
-                {
-                    bb = __method.receive();
-                }
-
-                return std::move(bb);
-            };
-        };
-    } // namespace client
-
     namespace server
     {
         enum State : int
@@ -218,23 +112,23 @@ namespace gbase::net::gProtocol::v1
             PROTOCOL_DATA
         };
 
-        template <class IPCMethod>
         class Protocol
         {
 
         private:
-            struct
+            struct DataWithMetaData
             {
+                uint16_t __size_of_data__ = 0x0;
                 TrasnmittingDataType _data_type_;
                 gbase::ByteBuffer<std::byte> _data_;
-            } DataWithMetaData;
+            };
 
             using ClientId = int;
-            using ListOfData = std::queue<DataWithMetaData>;
+            using QueueOfData = std::queue<DataWithMetaData>;
 
             std::flat_map<ClientId, State> __client_states;
-            std::flat_map<ClientId, ListOfData> __data_waiting_to_sent;
-            std::flat_map<ClientId, ListOfData> __data_waiting_to_receive;
+            std::flat_map<ClientId, QueueOfData> __data_waiting_to_sent;
+            std::flat_map<ClientId, QueueOfData> __data_waiting_to_receive;
 
         public:
             Protocol() = default;
@@ -245,28 +139,28 @@ namespace gbase::net::gProtocol::v1
                 __client_states.emplace(client_id, State::CONNECTED);
             }
 
-            [[nodiscard]] auto applyOnSend(ClientId client_id, gbase::ByteBuffer<std::byte> &data) -> gbase::ByteBuffer<std::byte>
+            [[nodiscard]] auto send(ClientId client_id, gbase::ByteBuffer<std::byte> &data) -> gbase::ByteBuffer<std::byte>
             {
                 if (data.get_filled_size() > 0)
                 {
                     // application has data to sent
                     __size_of_data__ = data.get_filled_size(); // fix warning
-                    __header_and_proto_version |= (uint16_t)START_DATA_TRANSMISSION << 8 | __G_PROTOCOL_MAJOR_VERSION__;
+                    __header_and_proto_version__ |= (uint16_t)START_DATA_TRANSMISSION << 8 | __G_PROTOCOL_MAJOR_VERSION__;
 
                     gbase::ByteBuffer<std::byte> war_head;
 
                     // send sot
-                    war_head.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
+                    war_head.append(reinterpret_cast<const char *>(&__header_and_proto_version__), sizeof(uint16_t));
                     war_head.append(reinterpret_cast<const char *>(&__size_of_data__), sizeof(uint16_t));
 
-                    if (auto &q = __data_waiting_to_sent.find(client_id); q != __data_waiting_to_sent.end())
+                    if (const auto &q = __data_waiting_to_sent.find(client_id); q != __data_waiting_to_sent.end())
                     {
-                        q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(war__header_and_proto_version___head)});
-                        q.push({TrasnmittingDataType::APPLICATION_DATA, std::move(data)});
+                        q->second.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(war_head)});
+                        q->second.push({TrasnmittingDataType::APPLICATION_DATA, std::move(data)});
                     }
                     else
                     {
-                        ListOfDataToBeSent q;
+                        QueueOfData q;
                         q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(war_head)});
                         q.push({TrasnmittingDataType::APPLICATION_DATA, std::move(data)});
                         __data_waiting_to_sent.emplace(client_id, q);
@@ -288,9 +182,9 @@ namespace gbase::net::gProtocol::v1
                                 q.pop();
 
                                 uint16_t proto_header_and_version_to_send = 0x0;
-                                data.read<uint16_t>(reinterpret_cast<char *>(&proto_header_and_version_to_send));
+                                ret_data.read<uint16_t>(reinterpret_cast<char *>(&proto_header_and_version_to_send));
 
-                                uint8_t proto_header_to_send = proto_header >> 8;
+                                uint8_t proto_header_to_send = proto_header_and_version_to_send >> 8;
 
                                 if (proto_header_to_send & START_DATA_TRANSMISSION)
                                     __client_states.emplace(client_id, State::START_APPLICATION_DATA_TRANSMISSION_ACK_WAITING);
@@ -310,20 +204,21 @@ namespace gbase::net::gProtocol::v1
                         {
                             if (q.front()._data_type_ == TrasnmittingDataType::APPLICATION_DATA)
                             {
-                                __header_and_proto_version |= (uint16_t)DATA_ARRIVAL << 8 | __G_PROTOCOL_MAJOR_VERSION__;
+                                __header_and_proto_version__ |= (uint16_t)DATA_ARRIVAL << 8 | __G_PROTOCOL_MAJOR_VERSION__;
                                 gbase::ByteBuffer<std::byte> data_with_hdr;
-                                ret_data.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
+                                ret_data.append(reinterpret_cast<const char *>(&__header_and_proto_version__), sizeof(uint16_t));
                                 ret_data.append(q.front().get(), q.front().get_filled_size());
                                 q.pop();
 
                                 __client_states.emplace(client_id, State::APPLICATION_DATA_TRANSMITTING);
                             }
+                            // else invalid protocol flow
                         }
                         break;
                     case State::APPLICATION_DATA_TRANSMISSION_COMPLETED:
                         __client_states.emplace(client_id, State::END_APPLICATION_DATA_TRANSMISSION_ACK_WAITING);
-                        __header_and_proto_version |= (uint16_t)END_DATA_TRANSMISSION << 8 | __G_PROTOCOL_MAJOR_VERSION__;
-                        ret_data.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
+                        __header_and_proto_version__ |= (uint16_t)END_DATA_TRANSMISSION << 8 | __G_PROTOCOL_MAJOR_VERSION__;
+                        ret_data.append(reinterpret_cast<const char *>(&__header_and_proto_version__), sizeof(uint16_t));
                         break;
                     case State::END_APPLICATION_DATA_TRANSMISSION_ACK_RECEIVED:
                         __client_states.emplace(client_id, State::IDLE);
@@ -342,7 +237,7 @@ namespace gbase::net::gProtocol::v1
                     GLOG_ERROR("No client found for id {}", client_id)
                 }
                 __size_of_data__ = 0x0;
-                __header_and_proto_version = 0x0;
+                __header_and_proto_version__ = 0x0;
                 return ret_data;
             };
 
@@ -350,25 +245,25 @@ namespace gbase::net::gProtocol::v1
             {
                 gbase::ByteBuffer<std::byte> ret_date;
                 // WARNING : TODO make sure it is a header (handle)
-                data.read<uint16_t>(reinterpret_cast<char *>(&__header_and_proto_version));
+                data.read<uint16_t>(reinterpret_cast<char *>(&__header_and_proto_version__));
 
-                uint8_t header = (uint8_t)(__header_and_proto_version >> 8);
+                uint8_t header = (uint8_t)(__header_and_proto_version__ >> 8);
                 switch (header)
                 {
                 // client side intiations
                 case START_SESSION: // client starts
-                    __header_and_proto_version |= (uint16_t)START_SESSION_ACK << 8 | __G_PROTOCOL_MAJOR_VERSION__;
+                    __header_and_proto_version__ |= (uint16_t)START_SESSION_ACK << 8 | __G_PROTOCOL_MAJOR_VERSION__;
                     gbase::ByteBuffer<std::byte> ack;
 
                     // send sot
-                    ack.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
+                    ack.append(reinterpret_cast<const char *>(&__header_and_proto_version__), sizeof(uint16_t));
                     if (auto &q = __data_waiting_to_sent.find(client_id); q != __data_waiting_to_sent.end())
                     {
                         q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(ack)});
                     }
                     else
                     {
-                        ListOfDataToBeSent q;
+                        QueueOfData q;
                         q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(ack)});
                         __data_waiting_to_sent.emplace(client_id, q);
                     }
@@ -378,15 +273,15 @@ namespace gbase::net::gProtocol::v1
 
                     if (auto &q = __data_waiting_to_receive.find(client_id); q == __data_waiting_to_receive.end())
                     {
-                        ListOfDataToBeSent q;
+                        QueueOfData q;
                         __data_waiting_to_receive.emplace(client_id, q);
                     }
 
-                    __header_and_proto_version |= (uint16_t)START_DATA_TRANSMISSION_ACK << 8 | __G_PROTOCOL_MAJOR_VERSION__;
+                    __header_and_proto_version__ |= (uint16_t)START_DATA_TRANSMISSION_ACK << 8 | __G_PROTOCOL_MAJOR_VERSION__;
                     gbase::ByteBuffer<std::byte> ack;
 
                     // send sot
-                    ack.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
+                    ack.append(reinterpret_cast<const char *>(&__header_and_proto_version__), sizeof(uint16_t));
                     ack.append(reinterpret_cast<const char *>(&__size_of_data__), sizeof(uint16_t));
                     if (auto &q = __data_waiting_to_sent.find(client_id); q != __data_waiting_to_sent.end())
                     {
@@ -394,7 +289,7 @@ namespace gbase::net::gProtocol::v1
                     }
                     else
                     {
-                        ListOfDataToBeSent q;
+                        QueueOfData q;
                         q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(ack)});
                         __data_waiting_to_sent.emplace(client_id, q);
                     }
@@ -406,35 +301,35 @@ namespace gbase::net::gProtocol::v1
                         q.pop();
                     }
 
-                    __header_and_proto_version |= (uint16_t)END_DATA_TRANSMISSION_ACK << 8 | __G_PROTOCOL_MAJOR_VERSION__;
+                    __header_and_proto_version__ |= (uint16_t)END_DATA_TRANSMISSION_ACK << 8 | __G_PROTOCOL_MAJOR_VERSION__;
                     gbase::ByteBuffer<std::byte> ack;
 
                     // send sot
-                    ack.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
+                    ack.append(reinterpret_cast<const char *>(&__header_and_proto_version__), sizeof(uint16_t));
                     if (auto &q = __data_waiting_to_sent.find(client_id); q != __data_waiting_to_sent.end())
                     {
                         q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(ack)});
                     }
                     else
                     {
-                        ListOfDataToBeSent q;
+                        QueueOfData q;
                         q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(ack)});
                         __data_waiting_to_sent.emplace(client_id, q);
                     }
                     break;
                 case END_SESSION: // client ends
-                    __header_and_proto_version |= (uint16_t)END_SESSION_ACK << 8 | __G_PROTOCOL_MAJOR_VERSION__;
+                    __header_and_proto_version__ |= (uint16_t)END_SESSION_ACK << 8 | __G_PROTOCOL_MAJOR_VERSION__;
                     gbase::ByteBuffer<std::byte> ack;
 
                     // send sot
-                    ack.append(reinterpret_cast<const char *>(&__header_and_proto_version), sizeof(uint16_t));
+                    ack.append(reinterpret_cast<const char *>(&__header_and_proto_version__), sizeof(uint16_t));
                     if (auto &q = __data_waiting_to_sent.find(client_id); q != __data_waiting_to_sent.end())
                     {
                         q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(ack)});
                     }
                     else
                     {
-                        ListOfDataToBeSent q;
+                        QueueOfData q;
                         q.push({TrasnmittingDataType::PROTOCOL_DATA, std::move(ack)});
                         __data_waiting_to_sent.emplace(client_id, q);
                     }

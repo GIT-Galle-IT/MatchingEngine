@@ -17,6 +17,7 @@ add_executable(
   MatchingEngineTest.cpp
   Setup.hpp
   ByteBufferTest.cpp
+  ProtocolTest.cpp
 )
 target_link_libraries(
   run_tests

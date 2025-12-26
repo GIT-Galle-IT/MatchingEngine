@@ -33,6 +33,7 @@ void GSyncServer<>::start()
                 GLOG_DEBUG_L1("Client Connected")
                 G_SOCKETFD client = m_serverSocket.accept();
                 m_clientSockets.push_back(client);
+                // server::protocol::onClientConnect(client)
                 continue;
             }
 
@@ -60,7 +61,7 @@ void GSyncServer<>::start()
 
                 if (FD_ISSET(client_fd, &writefds) == true)
                 {
-                    // protocol::state state{server::protocol::applyOnReceive(client_fd, p_byteBuffer.get())}
+                    // protocol::state state{server::protocol::applyOnSend(client_fd, p_byteBuffer.get())}
                     // switch (state) {
                     //      case protocol::state::APPLICATION_DATA_COMPLETE:
                     //          ByteBuffer<std::byte> send_bytes{server::protocol::applyOnSend(client_fd, application::handle(data))}
