@@ -20,7 +20,7 @@ namespace gbase
         size_t read_itr_ptr = 0;
 
     public:
-        ByteBuffer() = default;
+        ByteBuffer() : byte_array{nullptr}, buffer_size{0}, filled_size{0}, read_itr_ptr{0} {}
 
         ByteBuffer(ByteBuffer &&other)
         {
@@ -60,6 +60,11 @@ namespace gbase
         ByteBuffer &operator=(const ByteBuffer &) = delete;
         ByteBuffer &operator=(ByteBuffer &) = delete;
         ByteBuffer &operator=(ByteBuffer &&) = delete;
+
+        constexpr void resetReadIterator()
+        {
+            read_itr_ptr = 0;
+        }
 
         ~ByteBuffer()
         {
@@ -201,14 +206,6 @@ namespace gbase
             return byte_array;
         }
 
-        void release()
-        {
-            byte_array.reset();
-            buffer_size = 0;
-            filled_size = 0;
-            read_itr_ptr = 0;
-        }
-
         [[nodiscard]] auto get_buffer_size() const -> size_t
         {
             return buffer_size;
@@ -217,6 +214,14 @@ namespace gbase
         [[nodiscard]] auto get_filled_size() const -> size_t
         {
             return filled_size;
+        }
+
+        void release()
+        {
+            byte_array.reset();
+            buffer_size = 0;
+            filled_size = 0;
+            read_itr_ptr = 0;
         }
     };
 
@@ -237,9 +242,8 @@ namespace gbase
         std::cout << "[";
         for (unsigned int i = 0; i < byte_array.get_filled_size(); i++)
         {
-            (i < byte_array.get_filled_size() - 1)
-                ? std::cout << std::to_integer<int>(byte_array.get().get()[i]) << ","
-                : std::cout << std::to_integer<int>(byte_array.get().get()[i]);
+            std::cout << std::to_integer<int>(byte_array.get().get()[i]);
+            (i < byte_array.get_filled_size() - 1) ? std::cout << "," : std::cout << "";
         }
         std::cout << "]" << std::endl;
     }
