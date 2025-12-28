@@ -9,7 +9,6 @@
 #include <sstream>
 #include <ByteBuffer.hpp>
 
-
 namespace gbase::net::l1
 {
     using G_SOCKETFD = int;
@@ -23,7 +22,8 @@ namespace gbase::net::l1
         std::shared_ptr<ByteBuffer<std::byte>> receive_buffer;
 
     public:
-        GSocket() : socket_fd(-1) {
+        GSocket() : socket_fd(-1)
+        {
             send_buffer = std::make_shared<ByteBuffer<std::byte>>();
             receive_buffer = std::make_shared<ByteBuffer<std::byte>>();
         }
@@ -50,7 +50,8 @@ namespace gbase::net::l1
             return ::bind(socket_fd, reinterpret_cast<sockaddr *>(&address), sizeof(address)) == 0;
         }
 
-        [[nodiscard]] bool listen(int backlog = 5) const {
+        [[nodiscard]] bool listen(int backlog = 5) const
+        {
             GLOG_DEBUG_L1("now listening...");
             return ::listen(socket_fd, backlog) == 0;
         }
@@ -72,27 +73,29 @@ namespace gbase::net::l1
             return ::connect(socket_fd, reinterpret_cast<sockaddr *>(&address), sizeof(address)) == 0;
         }
 
-        void sendData(const ByteBuffer<std::byte> &data) const
+        void send(const ByteBuffer<std::byte> &data) const
         {
-            sendData(socket_fd, data);
+            send(socket_fd, data);
         }
 
-        void sendData(const ByteBuffer<std::byte> &&data) const
+        void send(const ByteBuffer<std::byte> &&data) const
         {
-            sendData(socket_fd, data);
+            send(socket_fd, data);
         }
 
-        static void sendData(const G_SOCKETFD receiving_party_socket_file_descriptor, const ByteBuffer<std::byte> &data) {
-            sendData(receiving_party_socket_file_descriptor, std::move(data));
+        static void send(const G_SOCKETFD receiving_party_socket_file_descriptor, const ByteBuffer<std::byte> &data)
+        {
+            send(receiving_party_socket_file_descriptor, std::move(data));
         }
 
-        static void sendData(const G_SOCKETFD receiving_party_socket_file_descriptor, const ByteBuffer<std::byte> &&data) {
+        static void send(const G_SOCKETFD receiving_party_socket_file_descriptor, const ByteBuffer<std::byte> &&data)
+        {
             auto n = ::send(receiving_party_socket_file_descriptor, data.get().get(), data.get_filled_size(), 0);
             GLOG_DEBUG_L1("sent {} bytes", n);
         }
 
         // TODO: ERROR HANDLING
-        [[nodiscard]] auto receiveData(const G_SOCKETFD client_socket_file_descriptor) -> std::shared_ptr<ByteBuffer<std::byte>>
+        [[nodiscard]] auto receive(const G_SOCKETFD client_socket_file_descriptor) -> std::shared_ptr<ByteBuffer<std::byte>>
         {
             receive_buffer->release();
             std::byte buffer[2048];
@@ -116,9 +119,9 @@ namespace gbase::net::l1
             return receive_buffer;
         }
 
-        [[nodiscard]] std::shared_ptr<ByteBuffer<std::byte>> receiveData()
+        [[nodiscard]] std::shared_ptr<ByteBuffer<std::byte>> receive()
         {
-            return receiveData(socket_fd);
+            return receive(socket_fd);
         }
 
         static void closeSocket(const G_SOCKETFD closingSocketFD) noexcept
@@ -152,7 +155,7 @@ int main()
     if (client != -1)
     {
         std::cout << "Client connected!\n";
-        server.sendData("Hello, Client!");
+        server.send("Hello, Client!");
     }
 
     server.closeSocket();
@@ -169,7 +172,7 @@ int main()
     }
 
     char buffer[1024] = {0};
-    client.receiveData(buffer, sizeof(buffer));
+    client.receive(buffer, sizeof(buffer));
     std::cout << "Received from server: " << buffer << std::endl;
 
     client.closeSocket();
