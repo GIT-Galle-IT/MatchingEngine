@@ -231,25 +231,24 @@ namespace gbase::net::gProtocol::v1
                             if (pending_data._data_type_ == TrasnmittingDataType::APPLICATION_DATA)
                             {
                                 __header_and_proto_version__ |= (uint16_t)DATA_ARRIVAL << 8 | __G_PROTOCOL_MAJOR_VERSION__;
+                                __size_of_data__ = pending_data._data_.get_filled_size();
                                 gbase::ByteBuffer<std::byte> data_with_hdr;
                                 data_with_hdr.append(reinterpret_cast<const char *>(&__header_and_proto_version__), sizeof(uint16_t));
+                                data_with_hdr.append(reinterpret_cast<const char *>(&__size_of_data__), sizeof(uint16_t));
                                 data_with_hdr.append(pending_data._data_.get().get(), pending_data._data_.get_filled_size());
                                 pending_data._data_.release();
                                 itr->second.pop();
 
-                                __client_states.emplace(client_id, State::APPLICATION_DATA_TRANSMITTING);
+                                __client_states[client_id] = State::APPLICATION_DATA_TRANSMITTING;
                                 return data_with_hdr;
                             }
                             // else invalid protocol flow
                         }
                         break;
                     case State::APPLICATION_DATA_TRANSMISSION_COMPLETED:
-                        __client_states.emplace(client_id, State::END_APPLICATION_DATA_TRANSMISSION_ACK_WAITING);
+                        __client_states[client_id] = State::END_APPLICATION_DATA_TRANSMISSION_ACK_WAITING;
                         __header_and_proto_version__ |= (uint16_t)END_DATA_TRANSMISSION << 8 | __G_PROTOCOL_MAJOR_VERSION__;
                         empty_data.append(reinterpret_cast<const char *>(&__header_and_proto_version__), sizeof(uint16_t));
-                        break;
-                    case State::END_APPLICATION_DATA_TRANSMISSION_ACK_RECEIVED:
-                        __client_states.emplace(client_id, State::IDLE);
                         break;
                     case State::END_APPLICATION_DATA_TRANSMISSION_ACK_WAITING:   // concurrency control
                     case State::APPLICATION_DATA_TRANSMITTING:                   // concurrency control
@@ -400,7 +399,7 @@ namespace gbase::net::gProtocol::v1
                         const auto &client_state = itr->second;
                         if (client_state == State::APPLICATION_DATA_TRANSMITTING)
                         {
-                            __client_states.emplace(client_id, State::APPLICATION_DATA_TRANSMISSION_COMPLETED);
+                            __client_states[client_id] = State::APPLICATION_DATA_TRANSMISSION_COMPLETED;
                         }
                     }
                     break;
@@ -410,7 +409,7 @@ namespace gbase::net::gProtocol::v1
                         const auto &client_state = itr->second;
                         if (client_state == State::END_APPLICATION_DATA_TRANSMISSION_ACK_WAITING)
                         {
-                            __client_states.emplace(client_id, State::END_APPLICATION_DATA_TRANSMISSION_ACK_RECEIVED);
+                            __client_states[client_id] = State::IDLE;
                         }
                     }
                     break;
