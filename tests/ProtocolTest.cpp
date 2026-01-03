@@ -48,6 +48,7 @@ TEST_F(BaseTest, protocol_send_data_server_to_client_testing)
         EXPECT_EQ(data_waiting_to_sent[client_id].front()._data_type_, gbase::net::gProtocol::v1::server::TrasnmittingDataType::APPLICATION_DATA);
 
     // 4. server is waiting for ack to start data transmission
+    // 4. client is waiting for ack to start data transmission
     client_states = server_protocol.getClientStates();
     EXPECT_EQ(client_states[client_id], gbase::net::gProtocol::v1::server::State::START_APPLICATION_DATA_TRANSMISSION_ACK_WAITING);
 
