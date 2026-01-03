@@ -24,7 +24,7 @@ namespace gbase
 
         ByteBuffer(ByteBuffer &&other)
         {
-            printf("moving byte buffer at [%p] to this byte buffer [%p]\n", (void *)&other, (void *)this);
+            // printf("moving byte buffer at [%p] to this byte buffer [%p]\n", (void *)&other, (void *)this);
             if (other.get() == nullptr)
                 return;
             std::shared_ptr<T> other_byte_array = other.get();
@@ -36,7 +36,7 @@ namespace gbase
 
         ByteBuffer(const ByteBuffer &other)
         {
-            printf("copying byte buffer at [%p] to this byte buffer [%p]\n", (void *)&other, (void *)this);
+            // printf("copying byte buffer at [%p] to this byte buffer [%p]\n", (void *)&other, (void *)this);
             if (other.get() == nullptr)
                 return;
             // allocate(*(other.get().get()), other.get_filled_size());
@@ -164,7 +164,7 @@ namespace gbase
             T *_ba = byte_array.get();
             for (size_t i = filled_size > 0 ? filled_size : 0; i < filled_size + size; i++)
             {
-                _ba[i] = byteStream[i];
+                _ba[i] = byteStream[i-filled_size];
             }
             filled_size += size;
         }
