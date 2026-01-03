@@ -16,9 +16,15 @@ jobs:
   external_dependency_install:
     runs-on: ubuntu-latest
     steps:
-      - name: Install Boost
-        run: |
-          cmake --version       
+      - name: Install boost
+        uses: MarkusJx/install-boost@v2
+        id: install-boost
+        with:
+            boost_version: 1.84.0
+            platform_version: 18.04
+            boost_install_dir: /include
+            toolset: gcc
+            arch: x86   
           
   build:
     # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
