@@ -214,8 +214,8 @@ namespace gbase::net::gProtocol::v1
                                     __client_states[client_id] = State::START_APPLICATION_DATA_TRANSMISSION_ACK_WAITING;
                                 if (proto_header_to_send == END_DATA_TRANSMISSION)
                                     __client_states[client_id] = State::END_APPLICATION_DATA_TRANSMISSION_ACK_WAITING;
-                                if (proto_header_to_send == START_DATA_TRANSMISSION_ACK)
-                                    __client_states[client_id] = State::APPLICATION_DATA_TRANSMITTING;
+                                if (proto_header_to_send == START_DATA_TRANSMISSION_ACK) // sends to client acking thatcliant starting data transmission
+                                    __client_states[client_id] = State::APPLICATION_DATA_RECEIVING;
                                 if (proto_header_to_send == END_DATA_TRANSMISSION_ACK)
                                     __client_states[client_id] = State::IDLE;
 
@@ -272,11 +272,10 @@ namespace gbase::net::gProtocol::v1
             {
                 // WARNING : TODO make sure it is a header (handle)
                 data.read<sizeof(uint16_t)>(reinterpret_cast<char *>(&__header_and_proto_version__));
-                
-
                 gbase::ByteBuffer<std::byte> ack;
 
                 uint8_t header = (uint8_t)(__header_and_proto_version__ >> 8);
+                __header_and_proto_version__ = 0x0;
                 switch (header)
                 {
                 // client side intiations
@@ -292,7 +291,7 @@ namespace gbase::net::gProtocol::v1
                     else
                     {
                         QueueOfData q;
-                        itr->second.push({sizeof(uint16_t), TrasnmittingDataType::PROTOCOL_DATA, std::move(ack)});
+                        q.push({sizeof(uint16_t), TrasnmittingDataType::PROTOCOL_DATA, std::move(ack)});
                         __data_waiting_to_sent.emplace(client_id, q);
                     }
                     break;
@@ -321,6 +320,33 @@ namespace gbase::net::gProtocol::v1
                         __data_waiting_to_sent.emplace(client_id, q);
                     }
                     break;
+                case DATA_ARRIVAL:
+                    if (const auto &itr = __client_states.find(client_id); itr != __client_states.end())
+                    {
+                        auto &client_state = itr->second;
+                        if (client_state == State::APPLICATION_DATA_RECEIVING)
+                        {
+                            if (const auto &itr = __data_waiting_to_receive.find(client_id); itr != __data_waiting_to_receive.end())
+                            {
+                                data.read<sizeof(uint16_t)>(reinterpret_cast<char *>(&__size_of_data__));
+
+                                char *app_data = new char[__size_of_data__+1];
+
+                                data.read(sizeof(uint16_t), __size_of_data__, app_data);
+                                app_data[__size_of_data__] = '\0';
+
+                                gbase::ByteBuffer<std::byte> received_data;
+                                received_data.append(static_cast<const char *>(app_data), __size_of_data__);
+                                itr->second.push({ack.get_filled_size(), TrasnmittingDataType::APPLICATION_DATA, std::move(received_data)});
+
+                                // __data_waiting_to_receive.emplace(client_id, q);
+                                delete[] app_data;
+                            }
+
+                            __client_states[client_id] = State::APPLICATION_DATA_RECEPTION_COMPLETED;
+                        }
+                    }
+                    break;
                 case END_DATA_TRANSMISSION: // client ends
                     if (const auto &itr = __data_waiting_to_receive.find(client_id); itr != __data_waiting_to_receive.end())
                     {
@@ -344,6 +370,7 @@ namespace gbase::net::gProtocol::v1
                         q.push({ack.get_filled_size(), TrasnmittingDataType::PROTOCOL_DATA, std::move(ack)});
                         __data_waiting_to_sent.emplace(client_id, q);
                     }
+                    __client_states[client_id] = State::IDLE;
                     break;
                 case END_SESSION: // client ends
                     __header_and_proto_version__ |= (uint16_t)END_SESSION_ACK << 8 | __G_PROTOCOL_MAJOR_VERSION__;
@@ -370,26 +397,6 @@ namespace gbase::net::gProtocol::v1
                         if (client_state == State::START_APPLICATION_DATA_TRANSMISSION_ACK_WAITING)
                         {
                             __client_states[client_id] = State::START_APPLICATION_DATA_TRANSMISSION_ACK_RECEIVED;
-                        }
-                    }
-                    break;
-                case DATA_ARRIVAL:
-                    if (const auto &itr = __client_states.find(client_id); itr != __client_states.end())
-                    {
-                        auto &client_state = itr->second;
-                        if (client_state == State::APPLICATION_DATA_RECEIVING)
-                        {
-                            if (const auto &itr = __data_waiting_to_receive.find(client_id); itr != __data_waiting_to_receive.end())
-                            {
-                                data.read<sizeof(uint16_t)>(reinterpret_cast<char *>(&__size_of_data__));
-                                void *app_data = malloc(__size_of_data__);
-                                data.read(sizeof(uint16_t), __size_of_data__, reinterpret_cast<char *>(&app_data));
-                                itr->second.back()._data_.append(static_cast<const char *>(app_data), __size_of_data__);
-                                // __data_waiting_to_receive.emplace(client_id, q);
-                                free(app_data);
-                            }
-
-                            __client_states.emplace(client_id, State::APPLICATION_DATA_RECEPTION_COMPLETED);
                         }
                     }
                     break;
