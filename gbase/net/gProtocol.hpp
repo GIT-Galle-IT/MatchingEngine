@@ -201,7 +201,6 @@ namespace gbase::net::gProtocol::v1
                             if (q.front()._data_type_ == TrasnmittingDataType::PROTOCOL_DATA)
                             {
                                 gbase::ByteBuffer<std::byte> pending_data{std::move(q.front()._data_)};
-                                gbase::print_byte_array(pending_data);
                                 q.front()._data_.release();
                                 q.pop();
 
@@ -268,7 +267,7 @@ namespace gbase::net::gProtocol::v1
                 return empty_data;
             };
 
-            void recieve(ClientId client_id, gbase::ByteBuffer<std::byte> &data)
+            auto recieve(ClientId client_id, gbase::ByteBuffer<std::byte> &data) -> gbase::ByteBuffer<std::byte>
             {
                 // WARNING : TODO make sure it is a header (handle)
                 data.read<sizeof(uint16_t)>(reinterpret_cast<char *>(&__header_and_proto_version__));
@@ -276,6 +275,7 @@ namespace gbase::net::gProtocol::v1
 
                 uint8_t header = (uint8_t)(__header_and_proto_version__ >> 8);
                 __header_and_proto_version__ = 0x0;
+                gbase::ByteBuffer<std::byte> empty_data;
                 switch (header)
                 {
                 // client side intiations
@@ -332,7 +332,7 @@ namespace gbase::net::gProtocol::v1
 
                                 char *app_data = new char[__size_of_data__+1];
 
-                                data.read(sizeof(uint16_t), __size_of_data__, app_data);
+                                data.read(sizeof(uint16_t) << 1, __size_of_data__, app_data);
                                 app_data[__size_of_data__] = '\0';
 
                                 gbase::ByteBuffer<std::byte> received_data;
@@ -348,14 +348,6 @@ namespace gbase::net::gProtocol::v1
                     }
                     break;
                 case END_DATA_TRANSMISSION: // client ends
-                    if (const auto &itr = __data_waiting_to_receive.find(client_id); itr != __data_waiting_to_receive.end())
-                    {
-                        auto &q = itr->second;
-                        gbase::ByteBuffer<std::byte> pending_data{std::move(q.front()._data_)};
-                        q.front()._data_.release();
-                        q.pop();
-                    }
-
                     __header_and_proto_version__ |= (uint16_t)END_DATA_TRANSMISSION_ACK << 8 | __G_PROTOCOL_MAJOR_VERSION__;
 
                     // send sot
@@ -371,6 +363,15 @@ namespace gbase::net::gProtocol::v1
                         __data_waiting_to_sent.emplace(client_id, q);
                     }
                     __client_states[client_id] = State::IDLE;
+                    if (const auto &itr = __data_waiting_to_receive.find(client_id); itr != __data_waiting_to_receive.end())
+                    {
+                        auto &q = itr->second;
+                        gbase::ByteBuffer<std::byte> pending_data{std::move(q.front()._data_)};
+                        q.front()._data_.release();
+                        q.pop();
+
+                        return pending_data;
+                    }
                     break;
                 case END_SESSION: // client ends
                     __header_and_proto_version__ |= (uint16_t)END_SESSION_ACK << 8 | __G_PROTOCOL_MAJOR_VERSION__;
@@ -426,6 +427,7 @@ namespace gbase::net::gProtocol::v1
                 }
                 __size_of_data__ = 0x0;
                 __header_and_proto_version__ = 0x0;
+                return empty_data;
             };
         };
     } // namespace server

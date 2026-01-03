@@ -192,11 +192,15 @@ TEST_F(BaseTest, protocol_send_data_client_to_s_testing)
     client_data.release();
     client_data.append(reinterpret_cast<const char *>(&__header_and_proto_version__CLIENT), sizeof(uint16_t));
 
-    server_protocol.recieve(1, client_data);
+    auto recieved_bytes{server_protocol.recieve(1, client_data)};
     EXPECT_EQ(client_data.get_filled_size(), 2 /*bytes*/); // should not be moved
+    EXPECT_EQ(recieved_bytes.get_filled_size(), bb_test.get_filled_size());
+    Message recieved_message;
+    recieved_message.deserialize(recieved_bytes);
+    EXPECT_TRUE(message == recieved_message);
+    
     client_states = server_protocol.getClientStates();
     EXPECT_EQ(client_states[client_id], gbase::net::gProtocol::v1::server::State::IDLE);
-    std::cout << "complete" << __size_of_data__ << std::endl;
 
     // 8. next call send in the iteration
     auto bytes_to_sent_over_wire3{std::move(server_protocol.send(1, bb_empty))}; // bb is empty
