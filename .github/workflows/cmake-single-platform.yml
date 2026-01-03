@@ -24,7 +24,10 @@ jobs:
             platform_version: 22.04
             boost_install_dir: /home/runner/include
             toolset: gcc
-            arch: x86   
+            arch: x86
+      - name: set boost library path
+        run: |
+          export LIBRARY_PATH=/home/runner/include:$LIBRARY_PATH
           
   build:
     # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
