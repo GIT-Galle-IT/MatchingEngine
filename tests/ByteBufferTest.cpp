@@ -6,8 +6,8 @@
 #include <chrono>
 #include <logging/gLog.h>
 #include <print>
-#include <build/_deps/boost-src/libs/asio/include/boost/asio/basic_socket_streambuf.hpp>
-#include <build/_deps/boost-src/libs/asio/include/boost/asio/buffer.hpp>
+#include <boost/asio/basic_socket_streambuf.hpp>
+#include <boost/asio/buffer.hpp>
 
 TEST_F(BaseTest, ByteBuffer_validation_Allocate_Test)
 {

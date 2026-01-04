@@ -7,7 +7,6 @@
 #include <sys/eventfd.h>
 #include <type_traits>
 #include <memory>
-#include <boost/lockfree/queue.hpp>
 #include <ByteBuffer.hpp>
 
 namespace gbase::net
@@ -93,19 +92,19 @@ namespace gbase::net
 
         void send(T &ss) noexcept override
         {
-            this->clientSocket.sendData(ss);
+            this->clientSocket.send(ss);
             // onResponse(this->clientSocket.receiveData());
         };
 
         void send(const T &ss) noexcept override
         {
-            this->clientSocket.sendData(ss);
+            this->clientSocket.send(ss);
             // onResponse(this->clientSocket.receiveData());
         };
 
         void send(T &&ss) noexcept override
         {
-            this->clientSocket.sendData(std::move(ss));
+            this->clientSocket.send(std::move(ss));
             // onResponse(this->clientSocket.receiveData());
             // ss.clear();
         };
