@@ -20,11 +20,11 @@ namespace gbase
         size_t read_itr_ptr = 0;
 
     public:
-        ByteBuffer() = default;
+        ByteBuffer() : byte_array{nullptr}, buffer_size{0}, filled_size{0}, read_itr_ptr{0} {}
 
         ByteBuffer(ByteBuffer &&other)
         {
-            printf("moving byte buffer at [%p] to this byte buffer [%p]\n", (void *)&other, (void *)this);
+            // printf("moving byte buffer at [%p] to this byte buffer [%p]\n", (void *)&other, (void *)this);
             if (other.get() == nullptr)
                 return;
             std::shared_ptr<T> other_byte_array = other.get();
@@ -36,7 +36,7 @@ namespace gbase
 
         ByteBuffer(const ByteBuffer &other)
         {
-            printf("copying byte buffer at [%p] to this byte buffer [%p]\n", (void *)&other, (void *)this);
+            // printf("copying byte buffer at [%p] to this byte buffer [%p]\n", (void *)&other, (void *)this);
             if (other.get() == nullptr)
                 return;
             // allocate(*(other.get().get()), other.get_filled_size());
@@ -60,6 +60,11 @@ namespace gbase
         ByteBuffer &operator=(const ByteBuffer &) = delete;
         ByteBuffer &operator=(ByteBuffer &) = delete;
         ByteBuffer &operator=(ByteBuffer &&) = delete;
+
+        constexpr void resetReadIterator()
+        {
+            read_itr_ptr = 0;
+        }
 
         ~ByteBuffer()
         {
@@ -104,27 +109,31 @@ namespace gbase
             {
                 // resize
                 // TODO:check for int overflows
-                T *temp_byte_array = new (malloc(sizeof(T) * 2 * (buffer_size + size))) T;
-                T *underlying_byte_array = byte_array.get();
-                for (size_t i = 0; i < buffer_size; i++)
+                if (buffer_size < filled_size + size)
                 {
-                    temp_byte_array[i] = underlying_byte_array[i];
+                    T *temp_byte_array = new (malloc(sizeof(T) * 2 * (buffer_size + size))) T;
+                    T *underlying_byte_array = byte_array.get();
+                    for (size_t i = 0; i < filled_size; i++)
+                    {
+                        temp_byte_array[i] = underlying_byte_array[i];
+                    }
+                    byte_array.reset(std::move(temp_byte_array));
+                    buffer_size = 2 * (buffer_size + size);
                 }
-                byte_array.reset(std::move(temp_byte_array));
             }
             else
             {
                 // allocate
                 T *ptr = new (malloc(sizeof(T) * size)) T;
                 byte_array.reset(std::move(ptr));
+                buffer_size = size;
             }
             T *_ba = byte_array.get();
-            for (size_t i = buffer_size > 0 ? buffer_size : 0; i < buffer_size + size; i++)
+            for (size_t i = filled_size > 0 ? filled_size : 0; i < filled_size + size; i++)
             {
                 _ba[i] = static_cast<T>(*byteStream++);
             }
-            buffer_size += size;
-            filled_size = buffer_size;
+            filled_size += size;
         }
 
         void append(const T byteStream[], const size_t size)
@@ -133,27 +142,31 @@ namespace gbase
             {
                 // resize
                 // TODO:check for int overflows
-                T *temp_byte_array = new (malloc(sizeof(T) * 2 * (buffer_size + size))) T;
-                T *underlying_byte_array = byte_array.get();
-                for (size_t i = 0; i < buffer_size; i++)
+                if (buffer_size < filled_size + size)
                 {
-                    temp_byte_array[i] = underlying_byte_array[i];
+                    T *temp_byte_array = new (malloc(sizeof(T) * 2 * (buffer_size + size))) T;
+                    T *underlying_byte_array = byte_array.get();
+                    for (size_t i = 0; i < filled_size; i++)
+                    {
+                        temp_byte_array[i] = underlying_byte_array[i];
+                    }
+                    byte_array.reset(std::move(temp_byte_array));
+                    buffer_size = 2 * (buffer_size + size);
                 }
-                byte_array.reset(std::move(temp_byte_array));
             }
             else
             {
                 // allocate
                 T *ptr = new (malloc(sizeof(T) * size)) T;
                 byte_array.reset(std::move(ptr));
+                buffer_size = size;
             }
             T *_ba = byte_array.get();
-            for (size_t i = buffer_size > 0 ? buffer_size : 0; i < buffer_size + size; i++)
+            for (size_t i = filled_size > 0 ? filled_size : 0; i < filled_size + size; i++)
             {
-                _ba[i] = byteStream[i];
+                _ba[i] = byteStream[i-filled_size];
             }
-            buffer_size += size;
-            filled_size = buffer_size;
+            filled_size += size;
         }
 
         template <typename U>
@@ -193,14 +206,6 @@ namespace gbase
             return byte_array;
         }
 
-        void release()
-        {
-            byte_array.reset();
-            buffer_size = 0;
-            filled_size = 0;
-            read_itr_ptr = 0;
-        }
-
         [[nodiscard]] auto get_buffer_size() const -> size_t
         {
             return buffer_size;
@@ -209,6 +214,14 @@ namespace gbase
         [[nodiscard]] auto get_filled_size() const -> size_t
         {
             return filled_size;
+        }
+
+        void release()
+        {
+            byte_array.reset();
+            buffer_size = 0;
+            filled_size = 0;
+            read_itr_ptr = 0;
         }
     };
 
@@ -229,9 +242,8 @@ namespace gbase
         std::cout << "[";
         for (unsigned int i = 0; i < byte_array.get_filled_size(); i++)
         {
-            (i < byte_array.get_filled_size() - 1)
-                ? std::cout << std::to_integer<int>(byte_array.get().get()[i]) << ","
-                : std::cout << std::to_integer<int>(byte_array.get().get()[i]);
+            std::cout << std::to_integer<int>(byte_array.get().get()[i]);
+            (i < byte_array.get_filled_size() - 1) ? std::cout << "," : std::cout << "";
         }
         std::cout << "]" << std::endl;
     }

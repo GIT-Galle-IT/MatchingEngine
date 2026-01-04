@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(DEBUG_LOG "Enable debug log" ON)
 
-add_compile_options("$<$<CONFIG:Release>:-O3>" "$<$<CONFIG:Debug>:-g>" -Wall -Wextra -Wpedantic -save-temps)
+add_compile_options("$<$<CONFIG:Release>:-O3>" "$<$<CONFIG:Debug>:-g>" -Wall -Wextra -Wpedantic -save-temps -std=c++23)
 
 # libs
 add_subdirectory(gbase)
